@@ -1,11 +1,18 @@
-from threading import Thread
-import cv2
 import platform
+from threading import Thread
+
+import cv2
+
+from helper import setup_logger
+
+# Set up logging
+logger = setup_logger()
+
 
 class WebcamStream:
     def __init__(self, stream_id=0):
         self.stream_id = stream_id
-        if platform.system() == 'Windows':
+        if platform.system() == "Windows":
             self.vcap = cv2.VideoCapture(stream_id, cv2.CAP_DSHOW)
         else:
             self.vcap = cv2.VideoCapture(stream_id)
@@ -13,7 +20,7 @@ class WebcamStream:
         self.grabbed, self.frame = self.vcap.read()
 
         if self.grabbed is False and self.vcap.isOpened() is False:
-            print(f"[Exiting] No more frames to read camera index {stream_id} ")
+            logger.error(f"[Exiting] No more frames to read camera index {stream_id} ")
             exit(0)
 
         self.stopped = True
@@ -30,7 +37,7 @@ class WebcamStream:
                 break
             self.grabbed, self.frame = self.vcap.read()
             if self.grabbed is False:
-                print("[Exiting] No more frames to read")
+                logger.warn("[Exiting] No more frames to read")
                 self.stopped = True
                 break
         self.vcap.release()
@@ -40,6 +47,7 @@ class WebcamStream:
 
     def stop(self):
         self.stopped = True
+
 
 class DualWebcamStream:
     def __init__(self, stream_id1=0, stream_id2=1):
@@ -67,6 +75,7 @@ class DualWebcamStream:
         self.stream2.stop()
         self.stopped = True
 
+
 def create_webcam_stream(*args):
     num_cameras = len(args)
     if num_cameras == 1:
@@ -74,7 +83,8 @@ def create_webcam_stream(*args):
     elif num_cameras == 2:
         return DualWebcamStream(args[0], args[1])
     else:
-        raise ValueError("You can provide one or two camera IDs only.")
+        raise logger.warn("You can provide one or two camera IDs only.")
+
 
 # Example usage:
 # single_stream = create_webcam_stream(0)

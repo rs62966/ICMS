@@ -1,9 +1,28 @@
-import mysql.connector
 import base64
-from face_recognition import face_encodings
+import os
+
 import cv2
+import mysql.connector
 import numpy as np
-from helper import logger, db_config
+from dotenv import load_dotenv
+from face_recognition import face_encodings
+
+from helper import setup_logger
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Access environment variables for database configuration
+db_config = {
+    "host": os.getenv("DB_HOST"),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "database": os.getenv("DB_DATABASE"),
+    "use_pure": os.getenv("DB_USE_PURE", False),  # Use pure Python implementation, default to True if not provided
+}
+
+# Set up logging
+logger = setup_logger()
 
 
 def get_passenger_data():
@@ -24,9 +43,8 @@ def get_passenger_data():
 
                 passenger_data = {
                     "passenger_name": passenger[0],
-                    "passenger_assign_seat": passenger[2],
                     "passenger_image": load_image,
-                    "passenger_encoding": face_encoding,
+                    "passenger_dataset": [passenger[0], passenger[2], face_encoding],
                 }
 
                 data_from_db.append(passenger_data)

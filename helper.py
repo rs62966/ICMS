@@ -14,10 +14,11 @@ current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
 SEAT_BEAT = False
 
-Empty =  0
-CORRECT =  1
-INCORRECT =  -1
+EMPTY = 0
+CORRECT = 1
+INCORRECT = -1
 UNAUTHORIZED = 101
+
 
 class ColoredFormatter(logging.Formatter):
     COLORS = {
@@ -127,11 +128,11 @@ class NotificationController:
         self.frame_process = frame_process
         self.dataset = dataset
         self.root = root
+        self.seats = self.initialize_seats()
+        self.root = None
         self.seat_info = None
-        self.seats = self.seat_layout()
-        self.passenger_track = defaultdict(int)
 
-    def seat_layout(self):
+    def initialize_seats(self):
         seat_positions = [
             ("A1", face_img, 0.66, 0.2),
             ("A2", face_img, 0.26, 0.2),
@@ -141,9 +142,6 @@ class NotificationController:
         return {name: Seat(self.root, name, img, x, y) for name, img, x, y in seat_positions}
 
     def initialize_seat_info(self):
-        """
-        Initialize seat information based on the dataset.
-        """
         default_seat_info = {
             "passenger_name": "",
             "status": "Empty",
@@ -151,33 +149,28 @@ class NotificationController:
             "profile_image": None,
             "passenger_embedding": None,
         }
-        try:
-                
-            self.seat_info = {seat_name: deepcopy(default_seat_info) for seat_name in self.SEAT_NAMES}
-            
-            if self.dataset:
-                for passenger in self.dataset:
-                    passenger_name, passenger_seat, passenger_embedding = passenger["passenger_dataset"]
-                    self.seat_info[passenger_seat]["profile_image"] = passenger["passenger_image"]
-                    self.seat_info[passenger_seat]["passenger_name"] = passenger_name
-                    self.seat_info[passenger_seat]["passenger_embedding"] = passenger_embedding
-                    self.update_single_seat(self.seats[passenger_seat],image_data=passenger["passenger_image"])
 
-        except Exception as e:
-            logger.error("Database not able to fetch Data.",e)
+        self.seat_info = {seat_name: default_seat_info.copy() for seat_name in self.SEAT_NAMES}
+        if self.dataset:
+            for passenger in self.dataset:
+                passenger_name, passenger_seat, passenger_embedding = passenger["passenger_dataset"]
+                self.seat_info[passenger_seat]["profile_image"] = passenger["passenger_image"]
+                self.seat_info[passenger_seat]["passenger_name"] = passenger_name
+                self.seat_info[passenger_seat]["passenger_embedding"] = passenger_embedding
+                self.update_single_seat(self.seats[passenger_seat], image_data=passenger["passenger_image"])
+        else:
+            logger.error("Database not able to fetch Data.")
 
-        return {seat: passenger.get("passenger_name") for seat, passenger in self.seat_info.items()}
+        return{seat: passenger.get("passenger_name") for seat, passenger in self.seat_info.items()}
 
     def update_seat_info(self, frame_results):
-        """
-        Update seat information based on the frame results.
-        """
-        self.passenger_track.clear()
-        name, status, score = None, "Empty", Empty
+        self.passenger_track = defaultdict(int)
+
         for frame_no, four_seat_info in frame_results.items():
-            for seat_name, passenger in four_seat_info.items():
-                if passenger:  # Skip if there is no passenger data
-                    passenger_info = passenger[0]
+            for seat_name, passengers in four_seat_info.items():
+                name, status, score = "", "Empty", EMPTY
+                if passengers:  
+                    passenger_info = passengers[0]
                     name, status = passenger_info.get("passenger_name", ""), "Unauthorized"
 
                     if name not in self.UNAUTHORIZED_NAMES:
@@ -185,75 +178,58 @@ class NotificationController:
                             status = "Correct"
                             score = CORRECT
                         else:
-                            status = "Incorrect" 
+                            status = "Incorrect"
                             score = INCORRECT
                     else:
                         score = UNAUTHORIZED
-                self.passenger_track[seat_name] =  (frame_no, name, status, score)
+                self.passenger_track[seat_name, frame_no] = (name, status, score)
+
+        return self.passenger_track
+
+    def analyze_frames(self, passenger_track):
+        seat_analysis = defaultdict(lambda: {"passenger_name": "", "status": "Empty", "score": 0})
+
+        for seat_info, passenger_info in passenger_track.items():
+            seat_name, frame_no = seat_info
+            passenger_name, status, score = passenger_info
+
+            seat_analysis[seat_name]["passenger_name"] = passenger_name
+            seat_analysis[seat_name]["status"] = status
+            seat_analysis[seat_name]["score"] += score
+
+        return seat_analysis
 
     def analysis(self, frame_results):
-        """
-        Analyze seat information and determine the status of passengers.
-        """
         result = {}
-        self.update_seat_info(frame_results)
-        passenger_track = self.get_passenger_last_seen_frame()
-      
+        analysis_seat_info = self.update_seat_info(frame_results)
+        passenger_track = self.analyze_frames(analysis_seat_info)
+        
+        # Create a copy of the dictionary to avoid "dictionary changed size during iteration" error
+        passenger_track_copy = passenger_track.copy()
 
-        for seat, passenger in self.seat_info.items():
-            passenger_name = passenger.get("passenger_name")
-            status = "Empty"
+        for seat, passenger_info in passenger_track_copy.items():
+            passenger_name = passenger_info.get("passenger_name", "")
+            status = passenger_info.get("status", "Empty")
+            count = passenger_info.get("score", 0)
             color = "white"
 
             if passenger_name:
-                count = passenger_track.get(passenger_name, 0)
-
                 if count >= 2:
                     status = "Correct"
                     color = "Yellow"
-                elif count < 2 and count > 0:
+                elif count > -5:
                     status = "Incorrect"
                     color = "Orange"
 
-            elif any(passenger_track.get(name, 0) > 0 for name in self.UNAUTHORIZED_NAMES):
+            elif any(passenger_track[seat]["score"] > 0 for seat in self.UNAUTHORIZED_NAMES):
                 status = "Unauthorized"
                 color = "Red"
-
-            passenger["status"] = status
-            passenger["color"] = color
 
             result[seat] = [passenger_name, status, color, count]
 
         return result
 
-    def get_passenger_last_seen_frame(self):
-        """
-        Analyze persons with frames records for each passenger.
-        """
-        last_seen_frames = {}
-
-        # Initialize variables to track the maximum count and corresponding status
-        max_count = 0
-        max_status = None
-
-        for seat_name, seat_info in self.passenger_track.items():
-            passenger_name, frame_no, status, count = seat_info
-
-            # Check if the passenger has been seen more times than the current maximum
-            if count > max_count:
-                max_count = count
-                max_status = status
-
-            # Update the last seen frame for the passenger
-            last_seen_frames[passenger_name] = {"frame_no": frame_no, "status": status, "count": count}
-
-        # Return the result with the maximum count and corresponding status
-        return last_seen_frames, {"max_count": max_count, "max_status": max_status}
-
     def update_single_seat(self, seat, image_data=None, rectangle_color="white", status="Empty"):
-        """
-        Update information for a seat wise
-        """
         if image_data:
             load_image = Image.open(BytesIO(image_data))
             tk_image = ImageTk.PhotoImage(load_image)

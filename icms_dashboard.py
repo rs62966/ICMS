@@ -20,7 +20,8 @@ from PIL import Image, ImageTk
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import NotificationController, Seat, do_face_verification, draw_seats, process_faces, resize, setup_logger
+from helper import (NotificationController, Seat, do_face_verification,
+                    draw_seats, process_faces, resize, setup_logger)
 
 # Set up logging
 logger = setup_logger()
@@ -106,10 +107,11 @@ class WebcamApp:
                 if len(self.last_five_frames) == self.process_frame:
                     # Get the current seat information and analysis the frames
                     analysis = self.notification_controller.analysis(self.last_five_frames)
+
                     logger.info(f"Result of :: {self.frame_process} {analysis}")
 
                     # Track the last five frames and clear the buffer
-                    self.track_last_five_frames = copy.deepcopy(self.last_five_frames)
+                    self.track_last_five_frames = copy.deepcopy(analysis)
                     self.last_five_frames.clear()
                     # Reset the frame process counter
                     self.frame_process = 0

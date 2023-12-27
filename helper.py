@@ -1,4 +1,5 @@
 import logging
+import os
 import pathlib
 import tkinter as tk
 from collections import defaultdict
@@ -9,6 +10,8 @@ import cv2
 import numpy as np
 from face_recognition import face_encodings, face_locations
 from PIL import Image, ImageTk
+from datetime import datetime
+
 
 current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
@@ -20,39 +23,52 @@ INCORRECT = -1
 UNAUTHORIZED = 101
 
 
-class ColoredFormatter(logging.Formatter):
-    COLORS = {
-        "ERROR": ("bright_red", "bold"),
-        "WARNING": ("yellow",),
+class Logger:
+    def __init__(self, module=None):
+        self.module = module
+        self.COLORS = {
         "INFO": ("blue",),
-    }
+        "DEBUG": ("yellow",),
+        "WARNING": ("bright_yellow",),
+        "ERROR": ("bright_red", "bold"),
+        "CRITICAL": ("red", "bold"),
+        }
+        log_level = os.environ.get("ICMS_LOG_LEVEL", str(logging.INFO))
+        try:
+            self.log_level = int(log_level)
+        except Exception as err:
+            self.dump_log(
+                f"Exception while parsing $ICMS_LOG_LEVEL."
+                f"Expected int but it is {log_level} ({str(err)})."
+                "Setting app log level to info."
+            )
+            self.log_level = logging.INFO
 
-    def format(self, record):
-        log_string = super().format(record)
-        if record.levelname in self.COLORS:
-            log_string = colorstr(*self.COLORS[record.levelname], log_string)
-        return log_string
+    def info(self, message):
+        if self.log_level <= logging.INFO:
+            self.dump_log(f"{message}", level="INFO")
 
+    def debug(self, message):
+        if self.log_level <= logging.DEBUG:
+            self.dump_log(f"🕷️ {message}", level="DEBUG")
 
-def setup_logger(logger_name="ICMS"):
-    # Check if the logger with the given name already exists
-    existing_logger = logging.getLogger(logger_name)
-    if existing_logger.handlers:
-        # If handlers are already present, return the existing logger
-        return existing_logger
+    def warn(self, message):
+        if self.log_level <= logging.WARNING:
+            self.dump_log(f"⚠️ {message}", level="WARNING")
 
-    # If no handlers are present, set up a new logger
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(logger_name)
-    handler = logging.StreamHandler()
-    handler.setFormatter(ColoredFormatter("%(levelname)s - %(message)s"))
-    logger.addHandler(handler)
+    def error(self, message):
+        if self.log_level <= logging.ERROR:
+            self.dump_log(f"🔴 {message}", level="ERROR")
 
-    return logger
+    def critical(self, message):
+        if self.log_level <= logging.CRITICAL:
+            self.dump_log(f"💥 {message}", level="CRITICAL")
 
+    def dump_log(self, message, level="INFO"):
+        color_args = self.COLORS.get(level.upper(), ("blue",))
+        colored_message = colorstr(*color_args, message)
+        print(f"{str(datetime.now())[2:-7]} {self.module} - {colored_message}")
 
-# Set up logging
-logger = setup_logger()
 
 if SEAT_BEAT:
     from keras.models import load_model
@@ -77,6 +93,7 @@ if SEAT_BEAT:
 
         return seat_belt_status, confidence_score
 
+logger = Logger(module="Helper Module")
 
 class Seat:
     def __init__(self, root, label, image_path, x_rel, y_rel):

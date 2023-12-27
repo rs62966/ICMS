@@ -20,11 +20,10 @@ from PIL import Image, ImageTk
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import (NotificationController, Seat, do_face_verification,
-                    draw_seats, process_faces, resize, setup_logger)
+from helper import (NotificationController, do_face_verification, draw_seats, process_faces, resize, Logger)
 
 # Set up logging
-logger = setup_logger()
+logger = Logger(module="ICMS Dashboard")
 
 # Set up file paths and camera sources
 current = pathlib.Path(__file__).parent.resolve()
@@ -124,7 +123,7 @@ class WebcamApp:
                     return
             self.root.after(100, self.show_frames)
         except Exception as e:
-            logger.error("Error in show_frames: %s", e)
+            logger.error(f"Error in show_frames: {e}")
 
     def process_frames(self):
         # Process the frames and store the information
@@ -138,14 +137,14 @@ class WebcamApp:
                     frame_info[seat_name].append(log_info)
             self.last_five_frames[self.frame_process] = frame_info
         except Exception as e:
-            logger.error("Error in process_frames: %s", e)
+            logger.error(f"Error in process_frames: {e}")
 
     def process_seat_info(self, face_embed):
         passenger_name, passenger_seat, match_distance = "", "", 0
         try:
             passenger_name, passenger_seat, match_distance = do_face_verification(self.database, face_embed)
         except Exception as e:
-            logger.error("Error in process_seat_info: %s", e)
+            logger.error(f"Error in process_seat_info: {e}")
 
         log_info = {"passenger_name": passenger_name, "passenger_assign_seat": passenger_seat, "passenger_match_distance": match_distance}
         return log_info

@@ -7,10 +7,15 @@ import numpy as np
 from dotenv import load_dotenv
 from face_recognition import face_encodings
 
-from helper import setup_logger
+from helper import Logger
+
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Set up logging
+logger = Logger(module="Database Level")
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # Access environment variables for database configuration
 db_config = {
@@ -21,15 +26,12 @@ db_config = {
     "use_pure": os.getenv("DB_USE_PURE", False),  # Use pure Python implementation, default to True if not provided
 }
 
-# Set up logging
-logger = setup_logger()
-
 
 def get_passenger_data():
     data_from_db = []
 
-    connection = mysql.connector.connect(**db_config)
     try:
+        connection = mysql.connector.connect(**db_config)
         cursor = connection.cursor()
         cursor.execute("SELECT passengerName, personImage, passengerSeat FROM passengerdetails")
         results = cursor.fetchall()
@@ -50,9 +52,9 @@ def get_passenger_data():
                 data_from_db.append(passenger_data)
 
             except Exception as e:
-                logger.error("Error processing passenger %s: %s", passenger[0], e)
+                logger.error(f"Error processing passenger {passenger[0]}: {e}")
     except Exception as e:
-        logger.error("Error fetching data from the database: %s", e)
+        logger.error(f"Error fetching data from the database:  {e}")
     else:
         connection.close()
 

@@ -18,10 +18,10 @@ from face_recognition import face_locations
 from keras.models import load_model
 
 from CameraAccess import create_webcam_stream
-from helper import draw_seats, resize, setup_logger
+from helper import draw_seats, resize, Logger
 
 # Set up logging
-logger = setup_logger()
+logger = Logger("Test Coordinate")
 current = pathlib.Path(__file__).parent.resolve()
 
 with open(current.joinpath("config.json")) as data_file:
@@ -55,7 +55,7 @@ def process_seatbelt(frame, seat_coordinate):
             label = f" {seat_name} ::  {class_name}: {round(confidence_score * 100, 2)}%"
             cv2.putText(frame, label, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
         except Exception as e:
-            logger.error("Error in process_seatbelt {e}")
+            logger.error("Error in process_seatbelt:: {e}")
 
     return frame
 
@@ -114,7 +114,7 @@ def main(face_detection=True, seat_belt_detection=False):
                 break
 
     except Exception as e:
-        logger.error("Error in process_seatbelt {main}")
+        logger.error(f"Error in process_seatbelt {e}")
 
 
 if __name__ == "__main__":

@@ -3,10 +3,11 @@ from threading import Thread
 
 import cv2
 
-from helper import setup_logger
+from helper import Logger
 
 # Set up logging
-logger = setup_logger()
+logger = Logger("WebcamStream")
+
 
 
 class WebcamStream:
@@ -20,7 +21,7 @@ class WebcamStream:
         self.grabbed, self.frame = self.vcap.read()
 
         if self.grabbed is False and self.vcap.isOpened() is False:
-            logger.error(f"[Exiting] No more frames to read camera index {stream_id} ")
+            logger.error(f"[Exiting] No more frames to read camera index {stream_id}")
             exit(0)
 
         self.stopped = True

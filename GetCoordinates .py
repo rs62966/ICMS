@@ -3,10 +3,10 @@ import pathlib
 
 import cv2
 
-from helper import setup_logger
+from helper import Logger
 
 # Set up logging
-logger = setup_logger()
+logger = Logger("Coordinate Creator")
 current = pathlib.Path(__file__).parent.resolve()
 
 with open(current.joinpath("config.json")) as data_file:

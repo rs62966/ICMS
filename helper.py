@@ -246,14 +246,16 @@ class NotificationController:
 
         return result
 
-    def update_single_seat(self, seat, image_data=None, rectangle_color="white", status="Empty"):
+    def update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"):
+        seat = self.seats[update_seat] if isinstance(update_seat, str) else update_seat
+
         if image_data:
             load_image = Image.open(BytesIO(image_data))
             tk_image = ImageTk.PhotoImage(load_image)
             seat.image_label.config(image=tk_image)
             seat.image_label.image = tk_image
-        seat.change_rectangle_color(rectangle_color, status)
 
+        seat.change_rectangle_color(rectangle_color, status)
 
 def colorstr(*input):
     # Colors a string https://en.wikipedia.org/wiki/ANSI_escape_code, i.e.  colorstr('blue', 'hello world')
@@ -342,7 +344,7 @@ def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0
     idx = np.argmin(distances)
     min_distance = distances[idx]
     passenger_info = data_point[idx]
-    logger.info(f"face_verification measure:: {passenger_info}")
+    logger.debug(f"face_verification measure:: {passenger_info}")
 
     if min_distance > tolerance:
         return "Unknown", "Un", min_distance

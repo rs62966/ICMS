@@ -106,7 +106,9 @@ class WebcamApp:
                 if len(self.last_five_frames) == self.process_frame:
                     # Get the current seat information and analysis the frames
                     analysis = self.notification_controller.analysis(self.last_five_frames)
-
+                    for seat, passenger_info in analysis.items():
+                        passenger_name, passenger_status, passenger_label_color , passenger_score = passenger_info
+                        self.notification_controller.update_single_seat(seat, None, passenger_label_color, passenger_status)
                     logger.info(f"Result of :: {self.frame_process} {analysis}")
 
                     # Track the last five frames and clear the buffer
@@ -153,15 +155,6 @@ class WebcamApp:
         # Display frames with seat status
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
-
-    def update_single_seat(self, seat, image_data=None, rectangle_color="white", status="Empty"):
-        # Update information for a single seat
-        if image_data:
-            load_image = Image.open(BytesIO(image_data))
-            tk_image = ImageTk.PhotoImage(load_image)
-            seat.image_label.config(image=tk_image)
-            seat.image_label.image = tk_image
-        seat.change_rectangle_color(rectangle_color, status)
 
     def on_closing(self):
         """

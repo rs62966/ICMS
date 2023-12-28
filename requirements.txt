@@ -8,3 +8,4 @@ numpy==1.24.4
 opencv-python==4.8.1.78
 Pillow==10.1.0
 protobuf==4.21.12
+python-dotenv==1.0.0

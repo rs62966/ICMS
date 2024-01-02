@@ -232,32 +232,31 @@ class NotificationController:
         result = {}
         analysis_seat_info = self.update_seat_info(frame_results)
         passenger_track = self.analyze_frames(analysis_seat_info)
-        
+
         # Create a copy of the dictionary to avoid "dictionary changed size during iteration" error
         passenger_track_copy = passenger_track.copy()
 
         for seat, passenger_info in passenger_track_copy.items():
             passenger_name = passenger_info.get("passenger_name", "")
             status = passenger_info.get("status", "Empty")
-            count = passenger_info.get("score", 0)
+            score_count = passenger_info.get("score", 0)
             color = "white"
-            print(passenger_track_copy)
 
             if passenger_name:
-                if count >= 2:
+                if passenger_name in self.UNAUTHORIZED_NAMES:
+                    status = "Unauthorized"
+                    color = "Red"
+                elif score_count >= 2:
                     status = "Correct"
                     color = "Yellow"
-                elif count > -5:
+                elif score_count < 1:
                     status = "Incorrect"
                     color = "Orange"
 
-            elif any(passenger_track[seat]["score"] > 0 for seat in self.UNAUTHORIZED_NAMES):
-                status = "Unauthorized"
-                color = "Red"
-
-            result[seat] = [passenger_name, status, color, count]
+            result[seat] = [passenger_name, status, color, score_count]
 
         return result
+
 
     def update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"):
         seat = self.seats[update_seat] if isinstance(update_seat, str) else update_seat

@@ -126,7 +126,7 @@ class WebcamApp:
         return log_info
 
     def update_gui(self, analysis):
-        # logger.info(f"Result of :: {self.frame_process} {self.track_last_five_frames} :: {analysis}")
+        logger.info(f"Result of :: {self.frame_process} {self.track_last_five_frames} :: {analysis}")
         if len(self.track_last_five_frames) == 0:
             self.track_last_five_frames = copy.deepcopy(analysis)
         elif len(self.track_last_five_frames)==4:

@@ -24,11 +24,20 @@ from helper import draw_seats, resize, Logger
 logger = Logger("Test Coordinate")
 current = pathlib.Path(__file__).parent.resolve()
 
+
+
+def seats_coordinates(data, frame_shape = (480, 1280, 3)):
+    h, w, d = frame_shape
+    return [(int(coord[0] * w),int(coord[1] * h),int(coord[2] * w),int(coord[3] * h),seat_name,) for seat_name, coord in data.items()]
+
+
+
 with open(current.joinpath("config.json")) as data_file:
     data = json.load(data_file)
     camera_source_1 = data["CAMERA"]["FIRST_CAMERA_INDEX"]
     camera_source_2 = data["CAMERA"]["SECOND_CAMERA_INDEX"]
-    two_cam_seat_coordinates = [(*coords, seat_name) for seat_name, coords in data["SEAT_COORDINATES"].items()]
+    two_cam_seat_coordinates = seats_coordinates(data["SEAT_COORDINATES"],data["FRAME_SHAPE"])
+
 
 model_file = current.joinpath("model", "keras_model.h5")
 class_names = ["Seat Belt", "No Seat Belt"]

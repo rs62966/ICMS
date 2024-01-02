@@ -3,7 +3,6 @@ import os
 import pathlib
 import tkinter as tk
 from collections import defaultdict
-from copy import deepcopy
 from io import BytesIO
 
 import cv2
@@ -109,7 +108,7 @@ class Seat:
         self.image_label.config(height=200, width=317, image=self.default_image)
 
         self.rectangle_color = "white"
-        self.rectangle_width = 140
+        self.rectangle_width = 200
         self.rectangle_height = 80
         self.rectangle_text = "Empty"
 
@@ -120,13 +119,13 @@ class Seat:
         # self.temp_text = self.rectangle_canvas_temp.create_text(self.rectangle_width / 2, self.rectangle_height / 2 + 10, text="98.4F", fill="black", font=("Arial", 14,'bold'))
 
         self.rectangle_canvas_status = tk.Canvas(root, width=self.rectangle_width, height=self.rectangle_height, bg=self.rectangle_color)
-        self.rectangle_canvas_status.place(relx=x_rel + 0.07, rely=y_rel, anchor="center")
+        self.rectangle_canvas_status.place(relx=x_rel + 0.09, rely=y_rel, anchor="center")
         self.status_text = self.rectangle_canvas_status.create_text(
             self.rectangle_width / 2,
             self.rectangle_height / 2,
             text=self.rectangle_text,
             fill="black",
-            font=("Arial", 8, "bold"),
+            font=("Arial", 12, "bold"),
         )
 
     def change_rectangle_color(self, new_color, status):
@@ -134,19 +133,29 @@ class Seat:
         self.rectangle_text = status
         self.rectangle_canvas_status.itemconfig(self.status_text, text=status)
 
+def seats_coordinates(data, frame_shape):
+    h, w, d = frame_shape
+    return [
+        (
+            int(coord[0] * w),
+            int(coord[1] * h),
+            int(coord[2] * w),
+            int(coord[3] * h),
+            seat_name
+        )
+        for seat_name, coord in data.items()
+    ]
+
 
 # fmt: off
-
 class NotificationController:
     SEAT_NAMES = ["A1", "A2", "B1", "B2"]
     UNAUTHORIZED_NAMES = {"Unknown", "Un"}
 
-    def __init__(self, root,dataset, frame_process=5):
-        self.frame_process = frame_process
+    def __init__(self, root,dataset):
         self.dataset = dataset
         self.root = root
         self.seats = self.initialize_seats()
-        self.root = None
         self.seat_info = None
 
     def initialize_seats(self):
@@ -171,14 +180,17 @@ class NotificationController:
         if self.dataset:
             for passenger in self.dataset:
                 passenger_name, passenger_seat, passenger_embedding = passenger["passenger_dataset"]
-                self.seat_info[passenger_seat]["profile_image"] = passenger["passenger_image"]
-                self.seat_info[passenger_seat]["passenger_name"] = passenger_name
-                self.seat_info[passenger_seat]["passenger_embedding"] = passenger_embedding
+                seat = self.seat_info[passenger_seat]
+                seat.update({
+                    "profile_image": passenger["passenger_image"],
+                    "passenger_name": passenger_name,
+                    "passenger_embedding": passenger_embedding,
+                })
                 self.update_single_seat(self.seats[passenger_seat], image_data=passenger["passenger_image"])
         else:
             logger.error("Database not able to fetch Data.")
 
-        return{seat: passenger.get("passenger_name") for seat, passenger in self.seat_info.items()}
+        return {seat: passenger.get("passenger_name") for seat, passenger in self.seat_info.items()}
 
     def update_seat_info(self, frame_results):
         self.passenger_track = defaultdict(int)
@@ -206,13 +218,8 @@ class NotificationController:
     def analyze_frames(self, passenger_track):
         seat_analysis = defaultdict(lambda: {"passenger_name": "", "status": "Empty", "score": 0})
 
-        for seat_info, passenger_info in passenger_track.items():
-            seat_name, frame_no = seat_info
-            passenger_name, status, score = passenger_info
-
-            seat_analysis[seat_name]["passenger_name"] = passenger_name
-            seat_analysis[seat_name]["status"] = status
-            seat_analysis[seat_name]["score"] += score
+        for (seat_name, frame_no), (passenger_name, status, score) in passenger_track.items():
+            seat_analysis[seat_name].update({"passenger_name": passenger_name, "status": status, "score": score})
 
         return seat_analysis
 
@@ -256,6 +263,8 @@ class NotificationController:
             seat.image_label.image = tk_image
 
         seat.change_rectangle_color(rectangle_color, status)
+
+
 
 def colorstr(*input):
     # Colors a string https://en.wikipedia.org/wiki/ANSI_escape_code, i.e.  colorstr('blue', 'hello world')
@@ -306,15 +315,16 @@ def process_faces(frame, seat_coordinates):
 
 def draw_seats(frame, seat_coordinates):
     """
-    Draw seats on the given frame.
+    Draw seats on the given frame with different colors.
     """
-    color = (0, 0, 255)  # Red color for rectangles and text
+    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]  # Red, Green, Blue, Yellow
 
-    for x1, y1, x2, y2, name in seat_coordinates:
+    for (x1, y1, x2, y2, name), color in zip(seat_coordinates, colors):
         cv2.rectangle(frame, (x1, y2), (x2, y1), color, 5)
         cv2.putText(frame, f"Seat {name}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
 
     return frame
+
 
 
 def resize(image, width=None, height=None, inter=cv2.INTER_AREA):

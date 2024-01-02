@@ -3,15 +3,21 @@ import pathlib
 
 import cv2
 
-from helper import Logger
+from helper import Logger, resize
 
 # Set up logging
 logger = Logger("Coordinate Creator")
 current = pathlib.Path(__file__).parent.resolve()
 
+
+def seats_coordinates(data, frame_shape = (480, 1280, 3)):
+    h, w, d = frame_shape
+    return [(int(coord[0] * w),int(coord[1] * h),int(coord[2] * w),int(coord[3] * h),seat_name,) for seat_name, coord in data.items()]
+
+
 with open(current.joinpath("config.json")) as data_file:
     data = json.load(data_file)
-    seat_coordinates = [(*coords, seat_name) for seat_name, coords in data["SEAT_COORDINATES"].items()]
+    seat_coordinates = seats_coordinates(data["SEAT_COORDINATES"])
 
 
 class RectangleDrawer:
@@ -63,11 +69,11 @@ class RectangleDrawer:
 
 
 if __name__ == "__main__":
-    image_path = r"C:\Users\rs62966\Downloads\MicrosoftTeams-image (5).png"
+    image_path = r"D:\react-native\Temperature_Measurement\UAM\UAM_Seat_belt_dataset\custom dataset\testcase\4.12.23\seatbelt\belt_image_20231204104937.jpg"
 
     # Example usage with predefined rectangles
     predefined_rectangles = seat_coordinates
 
     app = RectangleDrawer(image_path)
-    # app.draw_existing_rectangles(predefined_rectangles)
+    app.draw_existing_rectangles(predefined_rectangles)
     app.start()

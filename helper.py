@@ -217,10 +217,15 @@ class NotificationController:
 
     def analyze_frames(self, passenger_track):
         seat_analysis = defaultdict(lambda: {"passenger_name": "", "status": "Empty", "score": 0})
-
-        for (seat_name, frame_no), (passenger_name, status, score) in passenger_track.items():
-            seat_analysis[seat_name].update({"passenger_name": passenger_name, "status": status, "score": score})
-
+ 
+        for seat_info, passenger_info in passenger_track.items():
+            seat_name, frame_no = seat_info
+            passenger_name, status, score = passenger_info
+ 
+            seat_analysis[seat_name]["passenger_name"] = passenger_name
+            seat_analysis[seat_name]["status"] = status
+            seat_analysis[seat_name]["score"] += score
+ 
         return seat_analysis
 
     def analysis(self, frame_results):
@@ -236,6 +241,7 @@ class NotificationController:
             status = passenger_info.get("status", "Empty")
             count = passenger_info.get("score", 0)
             color = "white"
+            print(passenger_track_copy)
 
             if passenger_name:
                 if count >= 2:
@@ -340,7 +346,7 @@ def resize(image, width=None, height=None, inter=cv2.INTER_AREA):
     return resized
 
 
-def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.6):
+def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.5):
     """
     Perform face verification by comparing the embedding vectors from the database.
     """

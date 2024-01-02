@@ -128,10 +128,22 @@ class Seat:
             font=("Arial", 12, "bold"),
         )
 
-    def change_rectangle_color(self, new_color, status):
+    def flicker_color(self, colors, interval=200):
+        current_color = self.rectangle_canvas_status.cget("bg")
+        new_color = colors[0] if current_color == colors[1] else colors[1]
+        self.rectangle_canvas_status.config(bg=new_color)
+        self.flicker_job_id = self.root.after(interval, lambda: self.flicker_color(colors, interval))
+
+    def change_rectangle_color(self, new_color, status, bg="#8B4000", flicker=False):
+        if flicker:
+            self.flicker_color([bg, new_color])  
+        else:
+            self.rectangle_canvas_status.after_cancel(self.flicker_job_id)  # Cancel any ongoing flicker
+
         self.rectangle_canvas_status.config(bg=new_color)
         self.rectangle_text = status
         self.rectangle_canvas_status.itemconfig(self.status_text, text=status)
+
 
 def seats_coordinates(data, frame_shape):
     h, w, d = frame_shape
@@ -257,7 +269,6 @@ class NotificationController:
 
         return result
 
-
     def update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"):
         seat = self.seats[update_seat] if isinstance(update_seat, str) else update_seat
 
@@ -266,9 +277,13 @@ class NotificationController:
             tk_image = ImageTk.PhotoImage(load_image)
             seat.image_label.config(image=tk_image)
             seat.image_label.image = tk_image
-
-        seat.change_rectangle_color(rectangle_color, status)
-
+            
+            if rectangle_color not in ["Orange", "Red"]:
+                seat.change_rectangle_color(rectangle_color, status)
+            elif rectangle_color == "Orange":
+                seat.change_rectangle_color(rectangle_color, status, "#8B4000", flicker_color=True)
+            elif rectangle_color == "Red":
+                seat.change_rectangle_color(rectangle_color,  status,"#651C32", flicker_color=True)
 
 
 def colorstr(*input):

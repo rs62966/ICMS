@@ -13,7 +13,6 @@ from helper import (
     do_face_verification,
     draw_seats,
     process_faces,
-    resize,
     Logger,
     seats_coordinates
 )

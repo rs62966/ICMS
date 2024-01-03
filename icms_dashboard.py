@@ -14,6 +14,7 @@ from helper import (
     draw_seats,
     process_faces,
     Logger,
+    seatbelt_status,
     seats_coordinates,
     time_consumer
 )
@@ -130,8 +131,10 @@ class WebcamApp:
             self.track_last_five_frames = copy.deepcopy(analysis)
         elif len(self.track_last_five_frames)==4:
             if self.track_last_five_frames != analysis:
+                seat_belt_status = seatbelt_status()
                 for seat, (passenger_name, passenger_status, passenger_label_color, passenger_score) in analysis.items():
-                    self.notification_controller.update_single_seat(seat, None, passenger_label_color, passenger_status)
+                    status ,status_color = ("Ready","Green") if passenger_label_color == "Yellow" and seat_belt_status.get(seat, False) else (passenger_status, passenger_label_color)
+                    self.notification_controller.update_single_seat(seat, None, status_color, status)
             self.track_last_five_frames.clear()
         self.last_five_frames.clear()
 

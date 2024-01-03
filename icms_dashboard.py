@@ -14,7 +14,8 @@ from helper import (
     draw_seats,
     process_faces,
     Logger,
-    seats_coordinates
+    seats_coordinates,
+    time_consumer
 )
 
 # Configuration
@@ -80,6 +81,7 @@ class WebcamApp:
         self.vid.start()
         self.show_frames()
 
+    @time_consumer
     def show_frames(self):
         try:
             if self.vid.stopped:
@@ -89,9 +91,6 @@ class WebcamApp:
             if self.frame is not None:
                 self.frame_process += 1
 
-                # Resize the frame to the specified width and height
-                # self.frame = resize(self.frame, width, height)
-
                 # Process frames and store every seat face signature
                 self.process_frames()
 
@@ -100,9 +99,7 @@ class WebcamApp:
 
                 # Log and track results every 'process_frame' frames
                 if len(self.last_five_frames) == self.process_frame:
-                    # Get the current seat information and analysis the frames
-                    analysis = self.notification_controller.analysis(self.last_five_frames)
-                    self.update_gui(analysis)
+                    self.update_gui()
                     
                 # Check for the 'q' key to stop the video stream
                 key = cv2.waitKey(1)
@@ -126,6 +123,8 @@ class WebcamApp:
         return log_info
 
     def update_gui(self, analysis):
+        # Get the current seat information and analysis the frames
+        analysis = self.notification_controller.analysis(self.last_five_frames)
         logger.info(f"Result of :: {self.frame_process} {self.track_last_five_frames} :: {analysis}")
         if len(self.track_last_five_frames) == 0:
             self.track_last_five_frames = copy.deepcopy(analysis)

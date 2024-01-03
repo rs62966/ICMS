@@ -1,6 +1,7 @@
 import logging
 import os
 import pathlib
+import time
 import tkinter as tk
 from collections import defaultdict
 from io import BytesIO
@@ -364,3 +365,24 @@ def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0
     if min_distance > tolerance:
         return "Unknown", "Un", min_distance
     return passenger_info
+
+
+def time_consumer(func):
+    """_summary_
+
+    Args:
+        func (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    # This function shows the execution time of
+
+    def wrap_func(*args, **kwargs):
+        t1 = time.time()
+        result = func(*args, **kwargs)
+        t2 = time.time()
+        print(f"Function {func.__name__!r} executed in {(t2-t1):.4f}s")
+        return result
+
+    return wrap_func

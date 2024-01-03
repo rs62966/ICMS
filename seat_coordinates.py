@@ -18,7 +18,7 @@ from face_recognition import face_locations
 from keras.models import load_model
 
 from CameraAccess import create_webcam_stream
-from helper import draw_seats, resize, Logger
+from helper import draw_seats, Logger
 
 # Set up logging
 logger = Logger("Test Coordinate")
@@ -102,7 +102,6 @@ def main(face_detection=True, seat_belt_detection=False):
             frame = video_capture.read()
             if frame is not None:
                 frame_process += 1
-                frame = resize(frame, width, height)
                 frame = draw_seats(frame, seat_coordinates)
                 if seat_belt_detection:
                     frame = process_seatbelt(frame, seat_coordinates)

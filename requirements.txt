@@ -9,3 +9,4 @@ opencv-python==4.8.1.78
 Pillow==10.1.0
 protobuf==4.21.12
 python-dotenv==1.0.0
+Jetson.GPIO==2.1.5

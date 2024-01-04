@@ -123,7 +123,7 @@ class WebcamApp:
                     "passenger_match_distance": match_distance}
         return log_info
 
-    def update_gui(self, analysis):
+    def update_gui(self):
         # Get the current seat information and analysis the frames
         analysis = self.notification_controller.analysis(self.last_five_frames)
         logger.info(f"Result of :: {self.frame_process} {self.track_last_five_frames} :: {analysis}")

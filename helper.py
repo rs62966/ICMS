@@ -11,7 +11,6 @@ import numpy as np
 from face_recognition import face_encodings, face_locations
 from PIL import Image, ImageTk
 from datetime import datetime
-import Jetson.GPIO as GPIO
 import time
 
 
@@ -389,30 +388,39 @@ def time_consumer(func):
 
     return wrap_func
 
-def seatbelt_status():
-    """Get Seat Belt Status.
+try:
+    import Jetson.GPIO as GPIO
 
-    Returns:
-        dict: Dictionary containing seat belt status for each label.
-              False indicates 'No Belt', True indicates 'Belt'.
-    """
-    result = {}
-    try:
-        GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BOARD)
-        pin_labels = {'A1': 29, 'A2': 31, 'B1': 32, 'B2': 33}
+    def seatbelt_status():
+        """Get Seat Belt Status.
+            pin_labels = {'A1': 31, 'A2': 7, 'B1': 33, 'B2': 29}
+            Reference colour code:: {'A1': YELLOW, 'A2': BLUE, 'B1': RED, 'B2': GREEN}
+        Returns:
+            dict: Dictionary containing seat belt status for each label.
+                False indicates 'No Belt', True indicates 'Belt'.
+        """
+        result = {}
+        try:
+            GPIO.setwarnings(False)
+            GPIO.setmode(GPIO.BOARD)
+            pin_labels = {'A1': 31, 'A2': 7, 'B1': 33, 'B2': 29}
+    
+            for pin in pin_labels.values():
+                GPIO.setup(pin, GPIO.IN)
+    
+            pin_states = {label: GPIO.input(pin) for label, pin in pin_labels.items()}
+            result = {label: True if state == GPIO.HIGH else False for label, state in pin_states.items()}
+    
+        except GPIO.GPIOException as gpio_ex:
+            logger.error(f"GPIO Exception in seatbelt_status: {gpio_ex}")
+        except Exception as e:
+            logger.error(f"Error in seatbelt_status: {e}")
+        finally:
+            GPIO.cleanup()
+    
+        return result
 
-        for pin in pin_labels.values():
-            GPIO.setup(pin, GPIO.IN)
-
-        pin_states = {label: GPIO.input(pin) for label, pin in pin_labels.items()}
-        result = {label: True if state == GPIO.LOW else False for label, state in pin_states.items()}
-
-    except GPIO.GPIOException as gpio_ex:
-        logger.error(f"GPIO Exception in seatbelt_status: {gpio_ex}")
-    except Exception as e:
-        logger.error(f"Error in seatbelt_status: {e}")
-    finally:
-        GPIO.cleanup()
-
-    return result
+except Exception as e:
+    def seatbelt_status():
+        return {'A1': False, 'A2': False, 'B1': False, 'B2': False}
+    logger.warn(f"It's not a Jetson Platform: {e}")

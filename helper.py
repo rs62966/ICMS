@@ -18,10 +18,9 @@ current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
 SEAT_BEAT = False
 
-EMPTY = 0
 CORRECT = 1
-INCORRECT = -1
-UNAUTHORIZED = 101
+INCORRECT = 0
+UNAUTHORIZED = -1
 
 
 class Logger:
@@ -34,7 +33,7 @@ class Logger:
         "ERROR": ("bright_red", "bold"),
         "CRITICAL": ("red", "bold"),
         }
-        log_level = os.environ.get("ICMS_LOG_LEVEL", str(logging.INFO))
+        log_level = os.environ.get("ICMS_LOG_LEVEL", str(logging.DEBUG))
         try:
             self.log_level = int(log_level)
         except Exception as err:
@@ -199,7 +198,7 @@ class NotificationController:
 
         for frame_no, four_seat_info in frame_results.items():
             for seat_name, passengers in four_seat_info.items():
-                name, status, score = "", "Empty", EMPTY
+                name, status, score = "", "Empty", 0
                 if passengers:  
                     passenger_info = passengers[0]
                     name, status = passenger_info.get("passenger_name", ""), "Unauthorized"
@@ -251,12 +250,11 @@ class NotificationController:
                 elif score_count >= 2:
                     status = "Correct"
                     color = "Yellow"
-                elif score_count < 1:
+                elif score_count <= 0:
                     status = "Incorrect"
                     color = "Orange"
 
-            result[seat] = [passenger_name, status, color, score_count]
-
+            result[seat] = {"passenger_name":passenger_name ,"status": status,"color":color,"score_count":score_count}
         return result
 
 
@@ -387,40 +385,3 @@ def time_consumer(func):
         return result
 
     return wrap_func
-
-try:
-    import Jetson.GPIO as GPIO
-
-    def seatbelt_status():
-        """Get Seat Belt Status.
-            pin_labels = {'A1': 31, 'A2': 7, 'B1': 33, 'B2': 29}
-            Reference colour code:: {'A1': YELLOW, 'A2': BLUE, 'B1': RED, 'B2': GREEN}
-        Returns:
-            dict: Dictionary containing seat belt status for each label.
-                False indicates 'No Belt', True indicates 'Belt'.
-        """
-        result = {}
-        try:
-            GPIO.setwarnings(False)
-            GPIO.setmode(GPIO.BOARD)
-            pin_labels = {'A1': 31, 'A2': 7, 'B1': 33, 'B2': 29}
-    
-            for pin in pin_labels.values():
-                GPIO.setup(pin, GPIO.IN)
-    
-            pin_states = {label: GPIO.input(pin) for label, pin in pin_labels.items()}
-            result = {label: True if state == GPIO.HIGH else False for label, state in pin_states.items()}
-    
-        except GPIO.GPIOException as gpio_ex:
-            logger.error(f"GPIO Exception in seatbelt_status: {gpio_ex}")
-        except Exception as e:
-            logger.error(f"Error in seatbelt_status: {e}")
-        finally:
-            GPIO.cleanup()
-    
-        return result
-
-except Exception as e:
-    def seatbelt_status():
-        return {'A1': False, 'A2': False, 'B1': False, 'B2': False}
-    logger.warn(f"It's not a Jetson Platform: {e}")

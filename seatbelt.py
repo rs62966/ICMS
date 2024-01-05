@@ -1,0 +1,43 @@
+import platform
+from helper import logger
+
+if platform.machine() == 'aarch64':  # Checking if the platform is Jetson
+    try:
+        import Jetson.GPIO as GPIO
+    except ModuleNotFoundError:
+        GPIO = None
+else:
+    GPIO = None
+
+
+def seatbelt_status():
+    """Get Seat Belt Status.
+    pin_labels = {'A1': 31, 'A2': 7, 'B1': 33, 'B2': 29}
+    Reference colour code:: {'A1': YELLOW, 'A2': BLUE, 'B1': RED, 'B2': GREEN}
+    
+    Returns:
+        dict: Dictionary containing seat belt status for each label.
+              False indicates 'No Belt', True indicates 'Belt'.
+    """
+    result = {}
+    
+    try:
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BOARD)
+        pin_labels = {'A1': 31, 'A2': 7, 'B1': 33, 'B2': 29}
+
+        for pin in pin_labels.values():
+            GPIO.setup(pin, GPIO.IN)
+
+        pin_states = {label: GPIO.input(pin) for label, pin in pin_labels.items()}
+        result = {label: True if state == GPIO.HIGH else False for label, state in pin_states.items()}
+
+    except GPIO.GPIOException as gpio_ex:
+        logger.error(f"GPIO Exception in seatbelt_status: {gpio_ex}")
+    except Exception as e:
+        logger.error(f"Error in seatbelt_status: {e}")
+    finally:
+        GPIO.cleanup()
+
+    return result
+

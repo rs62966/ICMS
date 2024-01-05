@@ -31,7 +31,7 @@ class Logger:
             "ERROR": ("bright_red", "bold"),
             "CRITICAL": ("red", "bold"),
         }
-        log_level = os.environ.get("ICMS_LOG_LEVEL", str(logging.DEBUG))
+        log_level = os.environ.get("ICMS_LOG_LEVEL", str(logging.INFO))
         try:
             self.log_level = int(log_level)
         except Exception as err:

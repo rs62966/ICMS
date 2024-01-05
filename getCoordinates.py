@@ -38,10 +38,10 @@ class RectangleDrawer:
             cv2.imshow("Coordinate Create WIndow", self.img)
 
     def draw_existing_rectangles(self, rectangles):
-        for rect in rectangles:
-            x1, y1, x2, y2, name = rect
-            cv2.rectangle(self.img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(self.img, f"Seat {name}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
+        colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0)]  # Red, Green, Blue, Yellow
+        for (x1, y1, x2, y2, name), color in zip(rectangles, colors):
+            cv2.rectangle(self.img, (x1, y2), (x2, y1), color, 5)
+            cv2.putText(self.img, f"Seat {name}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
 
     def reset_rectangles(self):
         self.img = cv2.imread(image_path)

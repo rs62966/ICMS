@@ -79,7 +79,7 @@ class WebcamApp:
         self.vid.start()
         self.show_frames()
 
-    @time_consumer
+    # @time_consumer
     def show_frames(self):
         try:
             if self.vid.stopped:
@@ -123,29 +123,54 @@ class WebcamApp:
         try:
             seat_belt_status = seatbelt_status()
         except Exception as e:
-            # logger.warn(f"It's not a Jetson Platform: {e}")
             seat_belt_status = {"A1": False, "A2": False, "B1": False, "B2": False}
 
         for seat, passenger_info in self.track_last_five_frames.items():
-            status, status_color = (
-                ("Ready", "Green")
-                if passenger_info.get("color") == "Yellow" and seat_belt_status.get(seat, False)
-                else (passenger_info.get("status"), passenger_info.get("color"))
-            )
+            status, status_color = (("Ready", "Green") if passenger_info.get("color") == "Yellow" and seat_belt_status.get(seat, False) else (passenger_info.get("status"), passenger_info.get("color")))
             self.notification_controller.update_single_seat(seat, None, status_color, status)
         # Reset the tracker buffer
         self.track_last_five_frames.clear()
 
     def tracker(self):
-        # Get the current seat information and analysis the frames
-        analysis_result = self.notification_controller.analysis(self.last_five_frames)
-        # logger.info(f"Result of :: {self.frame_process} {self.track_last_five_frames} :: {analysis}")
-        if not self.track_last_five_frames:
-            self.track_last_five_frames = copy.deepcopy(analysis_result)
-        # elif len(self.track_last_five_frames) == 4 and not any(x[4] == 3 for x in self.track_last_five_frames.values()):
-        else:
-            self.update_gui()
-        self.last_five_frames.clear()
+        try:
+            # Get analysis results
+            analysis_result = self.notification_controller.analysis(self.last_five_frames)
+
+            # Iterate over seat and result pairs
+            for seat, result in analysis_result.items():
+                # Check if the seat is present in the tracking history
+                if seat in self.track_last_five_frames:
+                    # Check if the passenger_name is the same
+                    if self.track_last_five_frames[seat]['passenger_name'] == result['passenger_name']:
+                        # Increment seen value if the passenger_name is the same
+                        self.track_last_five_frames[seat]['seen'] = self.track_last_five_frames[seat].get('seen', 0) + 1
+                    else:
+                        # Update passenger_name and set seen to 1 for different passenger_name
+                        self.track_last_five_frames[seat]['passenger_name'] = result['passenger_name']
+                        self.track_last_five_frames[seat]['seen'] = 1
+                else:
+                    # If the seat is not present in track_last_five_frames, add it
+                    self.track_last_five_frames[seat] = {
+                        'color': result['color'],
+                        'passenger_name': result['passenger_name'],
+                        'score_count': 0,
+                        'status': result['status'],
+                        'seen': 1
+                    }
+            # Check if all 'seen' values are equal to 3
+            all_seen_3 = all(item['seen'] == 3 for item in self.track_last_five_frames.values())
+            logger.error(f"all_seen_3 {all_seen_3} ---->{self.track_last_five_frames.values()}")
+            if all_seen_3:
+                # Update the GUI
+                self.update_gui()
+                self.last_five_frames.clear()
+
+            # Clear the last five frames
+            self.last_five_frames.clear()
+
+        except Exception as e:
+            logger.error(f"Error in tracker: {e}")
+
 
     def process_frames(self):
         # Process the frames and store the information
@@ -164,7 +189,7 @@ class WebcamApp:
     def display_frames(self):
         # Display frames with seat status
         cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Cabin monitoring", 300, 150)  #
+        cv2.resizeWindow("Cabin monitoring", 600, 300)  #
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
 

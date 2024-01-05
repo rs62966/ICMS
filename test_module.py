@@ -1,13 +1,13 @@
+import os
 from collections import defaultdict
 from io import BytesIO
-import os
 from pprint import pprint
 from timeit import default_timer as timer
 
 from PIL import Image, ImageTk
 
 from database import get_passenger_data
-from helper import Seat, face_img,Logger
+from helper import Logger, Seat, face_img
 
 logger = Logger(module="Test Module")
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -158,7 +158,7 @@ class NotificationController:
         result = {}
         analysis_seat_info = self.update_seat_info(frame_results)
         passenger_track = self.analyze_frames(analysis_seat_info)
-        
+
         # Create a copy of the dictionary to avoid "dictionary changed size during iteration" error
         passenger_track_copy = passenger_track.copy()
 
@@ -213,5 +213,3 @@ pprint(analysis)
 
 end = timer()
 logger.info("Elapsed time: " + str(end - start))
-
-

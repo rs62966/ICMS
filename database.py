@@ -9,7 +9,6 @@ from face_recognition import face_encodings
 
 from helper import Logger
 
-
 # Load environment variables from .env file
 load_dotenv()
 

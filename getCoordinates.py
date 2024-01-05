@@ -3,21 +3,16 @@ import pathlib
 
 import cv2
 
-from helper import Logger, resize
+from helper import Logger, seats_coordinates
 
 # Set up logging
 logger = Logger("Coordinate Creator")
 current = pathlib.Path(__file__).parent.resolve()
 
 
-def seats_coordinates(data, frame_shape = (480, 1280, 3)):
-    h, w, d = frame_shape
-    return [(int(coord[0] * w),int(coord[1] * h),int(coord[2] * w),int(coord[3] * h),seat_name,) for seat_name, coord in data.items()]
-
-
 with open(current.joinpath("config.json")) as data_file:
     data = json.load(data_file)
-    seat_coordinates = seats_coordinates(data["SEAT_COORDINATES"])
+    seat_coordinates = seats_coordinates(data["SEAT_COORDINATES"], data["FRAME_SHAPE"])
 
 
 class RectangleDrawer:

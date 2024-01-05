@@ -9,7 +9,6 @@ from helper import Logger
 logger = Logger("WebcamStream")
 
 
-
 class WebcamStream:
     def __init__(self, stream_id=0):
         self.stream_id = stream_id

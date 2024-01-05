@@ -2,24 +2,20 @@ import copy
 import json
 import pathlib
 import sys
-import cv2
 import tkinter as tk
 from tkinter import PhotoImage
 
+import cv2
+
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import (
-    NotificationController,
-    do_face_verification,
-    draw_seats,
-    process_faces,
-    Logger,
-    seats_coordinates,
-    time_consumer
-)
+from helper import (Logger, NotificationController, do_face_verification,
+                    draw_seats, process_faces, seats_coordinates,
+                    time_consumer)
 from seatbelt import seatbelt_status
 
 # Configuration
+
 
 class Config:
     def __init__(self):
@@ -32,6 +28,7 @@ class Config:
         self.camera_source_1 = data["CAMERA"]["FIRST_CAMERA_INDEX"]
         self.camera_source_2 = data["CAMERA"]["SECOND_CAMERA_INDEX"]
         self.seat_coordinates = seats_coordinates(data["SEAT_COORDINATES"], data["FRAME_SHAPE"])
+
 
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
@@ -54,7 +51,7 @@ class WebcamApp:
 
         # Load passenger data from the database
         load_database = get_passenger_data()
-        self.database ={passenger["passenger_name"]: passenger["passenger_dataset"] for passenger in load_database}
+        self.database = {passenger["passenger_name"]: passenger["passenger_dataset"] for passenger in load_database}
         # Create of NotificationController
         self.notification_controller = NotificationController(self.root, load_database)
 
@@ -101,7 +98,7 @@ class WebcamApp:
                 # Log and track results every 'process_frame' frames
                 if len(self.last_five_frames) == self.process_frame:
                     self.tracker()
-                    
+
                 # Check for the 'q' key to stop the video stream
                 key = cv2.waitKey(1)
                 if key == ord("q"):
@@ -119,8 +116,7 @@ class WebcamApp:
         except Exception as e:
             logger.error(f"Error in process_seat_info: {e}")
 
-        log_info = {"passenger_name": passenger_name, "passenger_assign_seat": passenger_seat,
-                    "passenger_match_distance": match_distance}
+        log_info = {"passenger_name": passenger_name, "passenger_assign_seat": passenger_seat, "passenger_match_distance": match_distance}
         return log_info
 
     def update_gui(self):
@@ -128,10 +124,14 @@ class WebcamApp:
             seat_belt_status = seatbelt_status()
         except Exception as e:
             # logger.warn(f"It's not a Jetson Platform: {e}")
-            seat_belt_status = {'A1': False, 'A2': False, 'B1': False, 'B2': False}
+            seat_belt_status = {"A1": False, "A2": False, "B1": False, "B2": False}
 
         for seat, passenger_info in self.track_last_five_frames.items():
-            status, status_color = ("Ready", "Green") if passenger_info.get("color") == "Yellow" and seat_belt_status.get(seat, False) else (passenger_info.get("status"), passenger_info.get("color"))
+            status, status_color = (
+                ("Ready", "Green")
+                if passenger_info.get("color") == "Yellow" and seat_belt_status.get(seat, False)
+                else (passenger_info.get("status"), passenger_info.get("color"))
+            )
             self.notification_controller.update_single_seat(seat, None, status_color, status)
         # Reset the tracker buffer
         self.track_last_five_frames.clear()
@@ -143,10 +143,9 @@ class WebcamApp:
         if not self.track_last_five_frames:
             self.track_last_five_frames = copy.deepcopy(analysis_result)
         # elif len(self.track_last_five_frames) == 4 and not any(x[4] == 3 for x in self.track_last_five_frames.values()):
-        else:  
+        else:
             self.update_gui()
         self.last_five_frames.clear()
-
 
     def process_frames(self):
         # Process the frames and store the information
@@ -165,7 +164,7 @@ class WebcamApp:
     def display_frames(self):
         # Display frames with seat status
         cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Cabin monitoring", 300, 150)  # 
+        cv2.resizeWindow("Cabin monitoring", 300, 150)  #
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
 

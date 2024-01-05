@@ -4,15 +4,13 @@ import pathlib
 import time
 import tkinter as tk
 from collections import defaultdict
+from datetime import datetime
 from io import BytesIO
 
 import cv2
 import numpy as np
 from face_recognition import face_encodings, face_locations
 from PIL import Image, ImageTk
-from datetime import datetime
-import time
-
 
 current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
@@ -27,11 +25,11 @@ class Logger:
     def __init__(self, module=None):
         self.module = module
         self.COLORS = {
-        "INFO": ("blue",),
-        "DEBUG": ("yellow",),
-        "WARNING": ("bright_yellow",),
-        "ERROR": ("bright_red", "bold"),
-        "CRITICAL": ("red", "bold"),
+            "INFO": ("blue",),
+            "DEBUG": ("yellow",),
+            "WARNING": ("bright_yellow",),
+            "ERROR": ("bright_red", "bold"),
+            "CRITICAL": ("red", "bold"),
         }
         log_level = os.environ.get("ICMS_LOG_LEVEL", str(logging.DEBUG))
         try:
@@ -93,7 +91,9 @@ if SEAT_BEAT:
 
         return seat_belt_status, confidence_score
 
+
 logger = Logger(module="Helper Module")
+
 
 class Seat:
     def __init__(self, root, label, image_path, x_rel, y_rel):
@@ -113,12 +113,6 @@ class Seat:
         self.rectangle_height = 80
         self.rectangle_text = "Empty"
 
-        # Temperatue lable disable
-        # self.rectangle_canvas_temp = tk.Canvas(root, width=self.rectangle_width, height=self.rectangle_height, bg=self.rectangle_color)
-        # self.rectangle_canvas_temp.place(relx=x_rel + 0.12, rely=y_rel, anchor="center")
-        # self.body_temp_text = self.rectangle_canvas_temp.create_text(self.rectangle_width / 2, self.rectangle_height / 2 - 10, text="Body Temp", fill="black", font=("Arial", 10))
-        # self.temp_text = self.rectangle_canvas_temp.create_text(self.rectangle_width / 2, self.rectangle_height / 2 + 10, text="98.4F", fill="black", font=("Arial", 14,'bold'))
-
         self.rectangle_canvas_status = tk.Canvas(root, width=self.rectangle_width, height=self.rectangle_height, bg=self.rectangle_color)
         self.rectangle_canvas_status.place(relx=x_rel + 0.09, rely=y_rel, anchor="center")
         self.status_text = self.rectangle_canvas_status.create_text(
@@ -134,18 +128,10 @@ class Seat:
         self.rectangle_text = status
         self.rectangle_canvas_status.itemconfig(self.status_text, text=status)
 
+
 def seats_coordinates(data, frame_shape):
     h, w, d = frame_shape
-    return [
-        (
-            int(coord[0] * w),
-            int(coord[1] * h),
-            int(coord[2] * w),
-            int(coord[3] * h),
-            seat_name
-        )
-        for seat_name, coord in data.items()
-    ]
+    return [(int(coord[0] * w), int(coord[1] * h), int(coord[2] * w), int(coord[3] * h), seat_name) for seat_name, coord in data.items()]
 
 
 # fmt: off

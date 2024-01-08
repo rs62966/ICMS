@@ -78,7 +78,7 @@ class WebcamApp:
         self.monitoring = False
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.frame_process = 0
-        self.process_frame = 5
+        self.process_frame = 3
         self.last_five_frames = {}
         self.track_last_five_frames = {}
 
@@ -158,43 +158,16 @@ class WebcamApp:
         """Track passenger information over the last five frames."""
         try:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
-
-            for seat, result in analysis_result.items():
-                if seat in self.track_last_five_frames:
-                    self.update_track_last_five_frames(seat, result)
-                else:
-                    self.initialize_track_last_five_frames(seat, result)
-
-            check_gui_update = all(item["seen"] >= 3 for item in self.track_last_five_frames.values())
-            logger.critical(f"check_gui_update:: {check_gui_update} {self.track_last_five_frames.values()}")
-            if check_gui_update:
-                self.update_gui()
-                self.clear_frames()
-            
-            self.last_five_frames.clear()
+            if not self.track_last_five_frames:
+                self.track_last_five_frames = copy.deepcopy(analysis_result)
+            else:
+                self.process_frame = 10
+                self.track_last_five_frames = copy.deepcopy(analysis_result)
+            self.update_gui()
+            self.clear_frames()
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
 
-    def update_track_last_five_frames(self, seat, result):
-        """Update tracked frames for an existing seat."""
-        if self.track_last_five_frames[seat]["passenger_name"] == result["passenger_name"]:
-            self.track_last_five_frames[seat]["seen"] = self.track_last_five_frames[seat].get("seen", 0) + 1
-        else:
-            self.track_last_five_frames[seat].update(
-                {
-                    "passenger_name": result["passenger_name"],
-                    "seen": 1,
-                }
-            )
-
-    def initialize_track_last_five_frames(self, seat, result):
-        """Initialize tracked frames for a new seat."""
-        self.track_last_five_frames[seat] = {
-            "color": result["color"],
-            "passenger_name": result["passenger_name"],
-            "status": result["status"],
-            "seen": 1,
-        }
 
     def clear_frames(self):
         """Clear tracked and last five frames."""

@@ -331,7 +331,7 @@ def resize(image, width=None, height=None, inter=cv2.INTER_AREA):
     return resized
 
 
-def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.5):
+def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.6):
     """
     Perform face verification by comparing the embedding vectors from the database.
     """
@@ -345,7 +345,7 @@ def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0
     idx = np.argmin(distances)
     min_distance = distances[idx]
     passenger_info = data_point[idx]
-    logger.debug(f"face_verification measure:: {passenger_info}")
+    logger.info(f"face_verification measure:: {passenger_info}")
 
     if min_distance > tolerance:
         return "Unknown", "Un", min_distance

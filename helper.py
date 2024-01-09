@@ -405,7 +405,7 @@ def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0
     idx = np.argmin(distances)
     min_distance = distances[idx]
     passenger_info = data_point[idx]
-    logger.info(f"face_verification measure:: {passenger_info}")
+    logger.debug(f"face_verification measure:: {passenger_info}")
 
     if min_distance > tolerance:
         return "Unknown", "Un", min_distance

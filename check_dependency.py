@@ -1,3 +1,4 @@
+import re
 import subprocess
 import os
 import platform
@@ -8,6 +9,7 @@ import cv2
 from database import get_passenger_data
 from helper import Logger
 from seatbelt import seatbelt_status
+import pkg_resources
 
 logger = Logger(module="Check ICMS Dependency")
 
@@ -26,9 +28,9 @@ def check_camera():
         for camera_source in [camera_source_1, camera_source_2]:
             cap = cv2.VideoCapture(camera_source)
             if not cap.isOpened():
-                logger.info(f"Error: Camera source {camera_source} is not available.")
+                logger.warn(f"Error: Camera source {camera_source} is not available.")
             else:
-                logger.success(f"Camera source {camera_source} is available.")
+                logger.info(f"Camera source {camera_source} is available.")
                 cap.release()
 
     except Exception as e:
@@ -39,7 +41,7 @@ def check_db():
     logger.info("🗄️  DB Status:")
     try:
         database =  get_passenger_data()
-        logger.success(f"Successfully connected to the database and read passenger {len(database)}.")
+        logger.info(f"Successfully connected to the database and read passenger {len(database)}.")
     except Exception as e:
         logger.error(f"Error connecting to the database: {e}")
     finally:
@@ -50,34 +52,46 @@ def check_platform():
     logger.info("💻🖱️ Platform Info:")
     current_platform = platform.system()
     if current_platform.lower() == 'linux' and os.uname().machine.startswith('aarch64'):
-        logger.success("It's a Jetson platform: {}".format(current_platform))
+        logger.info("It's a Jetson platform: {}".format(current_platform))
     else:
         logger.error(f"It's a {current_platform} platform.")
 
-def check_installation(package):
-    try:
-        subprocess.check_output([sys.executable, "-m", "pip", "show", package])
-        logger.success(f"✅ {package} is already installed.")
-    except subprocess.CalledProcessError:
-        subprocess.call([sys.executable, "-m", "pip", "install", package])
-        logger.info(f"📦 {package} has been installed.")
+def check_installation(requirements_file = None):
+    if requirements_file:
+        logger.info("🚀 Checking and installing required packages...")
+        with open(requirements_file, "r") as f:
+            required_packages = [
+                line.strip().split("#")[0].strip() for line in f.readlines()
+            ]
+        installed_packages = [package.key for package in pkg_resources.working_set]
+
+        missing_packages = []
+        for package in required_packages:
+            if not package:  # Skip empty lines
+                continue
+            package_name = re.split("[<>=@ ]+", package.strip())[0]
+            if package_name.lower() not in installed_packages:
+                missing_packages.append(package_name)
+
+        if missing_packages:
+            logger.info(f"Missing packages: {', '.join(missing_packages)}")
+            # sys.exit(1)
+        else:
+            logger.info("✅ All packages are installed.")
+    else:
+        logger.info("please provide requirements file")
+
 
 def check_belt_read():
     try:
         seat_belt_status = seatbelt_status()
-        logger.success("✅ Seat belt Sensor Working fine")
+        logger.info("✅ Seat belt Sensor Working fine")
     except Exception as e:
-        logger.error("❌ Seat belt Sensor Not Working")
-    return seat_belt_status
+        logger.warn("❌ Seat belt Sensor Not Working")
 
 def main():
-    with open("requirements.txt", "r") as requirements_file:
-        packages = requirements_file.read().splitlines()
-
-    logger.info("🚀 Checking and installing required packages...")
-    for package in packages:
-        check_installation(package)
-
+    file = "./requirements.txt"
+    check_installation(file)
     print_separator()
     check_camera()
     print_separator()

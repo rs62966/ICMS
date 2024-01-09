@@ -10,10 +10,10 @@ import os
 import pathlib
 import time
 import tkinter as tk
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from io import BytesIO
-from collections import Counter
+
 import cv2
 import numpy as np
 from face_recognition import face_encodings, face_locations
@@ -290,10 +290,12 @@ class NotificationController:
         belt_data = self.belt_read()
         
         updated_results = {
-            seat: seat_info[:-1] + ["green"] if seat_info[-1] == "yellow" and belt_data[seat] else seat_info
+            seat: tuple(seat_info[:-1]) + ("green",) if seat_info[-1] == "yellow" and belt_data[seat] else seat_info
             for seat, seat_info in result.items()
         }
+        
         return updated_results
+
 
     def update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"):
         """

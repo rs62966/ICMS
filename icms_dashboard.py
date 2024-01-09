@@ -16,15 +16,9 @@ import cv2
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import (
-    Logger,
-    NotificationController,
-    do_face_verification,
-    draw_seats,
-    process_faces,
-    seats_coordinates,
-    time_consumer,
-)
+from helper import (Logger, NotificationController, do_face_verification,
+                    draw_seats, process_faces, seats_coordinates,
+                    time_consumer)
 
 
 class Config:
@@ -46,7 +40,7 @@ class Config:
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
 
-
+# fmt: off
 class WebcamApp:
     """Main class for the ICMS Dashboard application."""
 
@@ -155,24 +149,15 @@ class WebcamApp:
         """Track passenger information over the last five frames."""
         try:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
-            print(analysis_result)
-            try:
-                if not self.track_last_five_frames:
-                    self.track_last_five_frames = copy.deepcopy(analysis_result)
-                    self.update_gui()
-                else:
-                    self.next_process_frame = 20
-                    self.track_last_five_frames = copy.deepcopy(analysis_result)
-                    self.update_gui()
-
-            except Exception as se:
-                logger.error(f"Error in Inner tracker: {se}")
-
-            import pdb;pdb.set_trace()
-           
+            if not self.track_last_five_frames:
+                self.track_last_five_frames = copy.deepcopy(analysis_result)
+                self.update_gui()
+            else:
+                self.next_process_frame = 20
+                self.track_last_five_frames = copy.deepcopy(analysis_result)
+                self.update_gui()
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
-
 
     def clear_frames(self):
         """Clear tracked and last five frames."""

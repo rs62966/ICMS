@@ -1,20 +1,24 @@
+import json
+import os
+import pathlib
+import platform
 import re
 import subprocess
-import os
-import platform
 import sys
-import json
-import pathlib
+
 import cv2
+import pkg_resources
+
 from database import get_passenger_data
 from helper import Logger
 from seatbelt import seatbelt_status
-import pkg_resources
 
 logger = Logger(module="Check ICMS Dependency")
 
+
 def print_separator():
     logger.info("*" * 30)
+
 
 def check_camera():
     try:
@@ -36,11 +40,12 @@ def check_camera():
     except Exception as e:
         logger.error(f"Error checking camera devices: {e}")
 
+
 def check_db():
     connection = None
     logger.info("🗄️  DB Status:")
     try:
-        database =  get_passenger_data()
+        database = get_passenger_data()
         logger.info(f"Successfully connected to the database and read passenger {len(database)}.")
     except Exception as e:
         logger.error(f"Error connecting to the database: {e}")
@@ -48,21 +53,21 @@ def check_db():
         if connection is not None and connection.is_connected():
             connection.close()
 
+
 def check_platform():
     logger.info("💻🖱️ Platform Info:")
     current_platform = platform.system()
-    if current_platform.lower() == 'linux' and os.uname().machine.startswith('aarch64'):
+    if current_platform.lower() == "linux" and os.uname().machine.startswith("aarch64"):
         logger.info("It's a Jetson platform: {}".format(current_platform))
     else:
         logger.error(f"It's a {current_platform} platform.")
 
-def check_installation(requirements_file = None):
+
+def check_installation(requirements_file=None):
     if requirements_file:
         logger.info("🚀 Checking and installing required packages...")
         with open(requirements_file, "r") as f:
-            required_packages = [
-                line.strip().split("#")[0].strip() for line in f.readlines()
-            ]
+            required_packages = [line.strip().split("#")[0].strip() for line in f.readlines()]
         installed_packages = [package.key for package in pkg_resources.working_set]
 
         missing_packages = []
@@ -89,6 +94,7 @@ def check_belt_read():
     except Exception as e:
         logger.warn("❌ Seat belt Sensor Not Working")
 
+
 def main():
     file = "./requirements.txt"
     check_installation(file)
@@ -100,6 +106,7 @@ def main():
     check_belt_read()
     print_separator()
     check_db()
+
 
 if __name__ == "__main__":
     main()

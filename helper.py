@@ -290,7 +290,7 @@ class NotificationController:
         belt_data = self.belt_read()
         
         updated_results = {
-            seat: tuple(seat_info[:-1]) + ("green",) if seat_info[-1] == "yellow" and belt_data[seat] else seat_info
+            seat: tuple(seat_info[:-2]) + ("Ready","green") if seat_info[-1] == "yellow" and belt_data[seat] else seat_info
             for seat, seat_info in result.items()
         }
         

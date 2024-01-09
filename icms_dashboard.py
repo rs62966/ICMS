@@ -153,7 +153,7 @@ class WebcamApp:
                 self.track_last_five_frames = copy.deepcopy(analysis_result)
                 self.update_gui()
             else:
-                self.next_process_frame = 20
+                self.next_process_frame = 10
                 self.track_last_five_frames = copy.deepcopy(analysis_result)
                 self.update_gui()
         except Exception as e:

@@ -1,3 +1,10 @@
+"""ICMS Dashboard Application
+
+This application utilizes face recognition to monitor passengers in an aircraft cabin. It includes features such as seat mapping, face verification, and seatbelt status tracking.
+
+Author: Ravi Shanker Singh
+"""
+
 import copy
 import json
 import pathlib
@@ -12,13 +19,13 @@ from database import get_passenger_data
 from helper import (Logger, NotificationController, do_face_verification,
                     draw_seats, process_faces, seats_coordinates,
                     time_consumer)
-from seatbelt import seatbelt_status
-
-# Configuration
 
 
 class Config:
+    """Configuration class for ICMS Dashboard."""
+
     def __init__(self):
+        """Initialize configuration parameters."""
         current = pathlib.Path(__file__).parent.resolve()
         self.background = current.joinpath("Images", "home.png")
 
@@ -33,9 +40,12 @@ class Config:
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
 
-
+# fmt: off
 class WebcamApp:
+    """Main class for the ICMS Dashboard application."""
+
     def __init__(self, root):
+        """Initialize the application."""
         # Initialize the main application
         self.root = root
         self.root.title("Webcam Face Recognition")
@@ -52,7 +62,7 @@ class WebcamApp:
         # Load passenger data from the database
         load_database = get_passenger_data()
         self.database = {passenger["passenger_name"]: passenger["passenger_dataset"] for passenger in load_database}
-        # Create of NotificationController
+        # Create NotificationController
         self.notification_controller = NotificationController(self.root, load_database)
 
         # Initialize variables
@@ -61,12 +71,13 @@ class WebcamApp:
         self.monitoring = False
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.frame_process = 0
-        self.process_frame = 5
+        self.first_process_frame = 5
+        self.next_process_frame = 0
         self.last_five_frames = {}
         self.track_last_five_frames = {}
 
     def start_monitoring(self):
-        # Start the monitoring process and Update the seat
+        """Start the monitoring process."""
         dataset = self.notification_controller.initialize_seat_info()
         logger.info(f"Database Loaded for {dataset}")
         if not self.monitoring:
@@ -74,13 +85,14 @@ class WebcamApp:
         self.start_webcam()
 
     def start_webcam(self):
-        # Start the webcam stream
+        """Start the webcam stream."""
         self.vid = create_webcam_stream(CONFIG.camera_source_1, CONFIG.camera_source_2)
         self.vid.start()
         self.show_frames()
 
-    @time_consumer
+    # @time_consumer
     def show_frames(self):
+        """Display frames from the webcam."""
         try:
             if self.vid.stopped:
                 return
@@ -96,7 +108,7 @@ class WebcamApp:
                 self.display_frames()
 
                 # Log and track results every 'process_frame' frames
-                if len(self.last_five_frames) == self.process_frame:
+                if len(self.last_five_frames) == self.first_process_frame:
                     self.tracker()
 
                 # Check for the 'q' key to stop the video stream
@@ -104,51 +116,56 @@ class WebcamApp:
                 if key == ord("q"):
                     self.vid.stop()
                     cv2.destroyAllWindows()
+                    self.notification_controller.initialize_seat_info()
                     return
             self.root.after(100, self.show_frames)
         except Exception as e:
             logger.error(f"Error in show_frames: {e}")
 
     def process_seat_info(self, face_embed):
+        """Process seat information based on face embedding."""
         passenger_name, passenger_seat, match_distance = "", "", 0
         try:
             passenger_name, passenger_seat, match_distance = do_face_verification(self.database, face_embed)
         except Exception as e:
             logger.error(f"Error in process_seat_info: {e}")
 
-        log_info = {"passenger_name": passenger_name, "passenger_assign_seat": passenger_seat, "passenger_match_distance": match_distance}
+        log_info = {
+            "passenger_name": passenger_name,
+            "passenger_assign_seat": passenger_seat,
+            "passenger_match_distance": match_distance,
+        }
         return log_info
 
     def update_gui(self):
-        try:
-            seat_belt_status = seatbelt_status()
-        except Exception as e:
-            # logger.warn(f"It's not a Jetson Platform: {e}")
-            seat_belt_status = {"A1": False, "A2": False, "B1": False, "B2": False}
-
+        """Update the GUI based on seatbelt status."""
         for seat, passenger_info in self.track_last_five_frames.items():
-            status, status_color = (
-                ("Ready", "Green")
-                if passenger_info.get("color") == "Yellow" and seat_belt_status.get(seat, False)
-                else (passenger_info.get("status"), passenger_info.get("color"))
-            )
-            self.notification_controller.update_single_seat(seat, None, status_color, status)
-        # Reset the tracker buffer
-        self.track_last_five_frames.clear()
+            _ , status, color = passenger_info
+            self.notification_controller.update_single_seat(seat, None, color, status)
+        self.clear_frames()
+        
 
     def tracker(self):
-        # Get the current seat information and analysis the frames
-        analysis_result = self.notification_controller.analysis(self.last_five_frames)
-        # logger.info(f"Result of :: {self.frame_process} {self.track_last_five_frames} :: {analysis}")
-        if not self.track_last_five_frames:
-            self.track_last_five_frames = copy.deepcopy(analysis_result)
-        # elif len(self.track_last_five_frames) == 4 and not any(x[4] == 3 for x in self.track_last_five_frames.values()):
-        else:
-            self.update_gui()
+        """Track passenger information over the last five frames."""
+        try:
+            analysis_result = self.notification_controller.analysis(self.last_five_frames)
+            if not self.track_last_five_frames:
+                self.track_last_five_frames = copy.deepcopy(analysis_result)
+                self.update_gui()
+            else:
+                self.next_process_frame = 10
+                self.track_last_five_frames = copy.deepcopy(analysis_result)
+                self.update_gui()
+        except Exception as e:
+            logger.error(f"Error in tracker: {e}")
+
+    def clear_frames(self):
+        """Clear tracked and last five frames."""
         self.last_five_frames.clear()
+        self.track_last_five_frames.clear()
 
     def process_frames(self):
-        # Process the frames and store the information
+        """Process frames and store face signatures."""
         try:
             result = process_faces(self.frame, self.seat_coordinate)
             frame_info = {"A1": [], "A2": [], "B1": [], "B2": []}
@@ -162,16 +179,14 @@ class WebcamApp:
             logger.error(f"Error in process_frames: {e}")
 
     def display_frames(self):
-        # Display frames with seat status
+        """Display frames with seat status."""
         cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Cabin monitoring", 300, 150)  #
+        cv2.resizeWindow("Cabin monitoring", 600, 300)
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
 
     def on_closing(self):
-        """
-        Handle closing the application.
-        """
+        """Handle closing the application."""
         try:
             if self.vid:
                 self.vid.stop()
@@ -184,7 +199,7 @@ class WebcamApp:
 
 
 def main():
-    # Main function to start the application
+    """Main function to start the application."""
     root = tk.Tk()
     app = WebcamApp(root)
 

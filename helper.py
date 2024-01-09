@@ -252,15 +252,24 @@ class NotificationController:
                 if passengers:
                     passenger_info = passengers[0]
                     name = passenger_info.get("passenger_name", "")
-                    status = "Correct" if name not in self.UNAUTHORIZED_NAMES and passenger_info["passenger_assign_seat"] == seat_name else "Incorrect" if name not in self.UNAUTHORIZED_NAMES else "Unauthorized"
-                    belt_status = belt_data.get(seat_name, False)
-                    color = 'green' if belt_status and status == 'Correct' else 'yellow' if belt_status else 'orange' if status == 'Incorrect' else 'red'
+                    if name in self.UNAUTHORIZED_NAMES:
+                        status = "Unauthorized" 
+                        color  = "red"
+
+                    elif name not in self.UNAUTHORIZED_NAMES and passenger_info["passenger_assign_seat"] == seat_name :
+                        status = "Correct" 
+                        color  = "yellow"
+                        if belt_data.get(seat_name, False):
+                            status = "Reay"
+                            color = "green"
+                    else:
+                        status = "Incorrect" 
+                        color  = "orange"
                 else:
                     name, status, color = "", "Empty", "white"
-                    belt_status = belt_data.get(seat_name, False)
-                    color = 'yellow' if belt_status else 'white'
+                    
+                self.passenger_track[seat_name].append((name, status, color))
 
-            self.passenger_track[seat_name].append((name, status, color))
     def analyze_frames(self):
         """
         Analyze frame results.
@@ -396,7 +405,7 @@ def resize(image, width=None, height=None, inter=cv2.INTER_AREA):
     return resized
 
 
-def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.55):
+def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.6):
     """
     Perform face verification by comparing the embedding vectors from the database.
     """

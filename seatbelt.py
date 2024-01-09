@@ -1,7 +1,5 @@
 import platform
 
-from helper import logger
-
 if platform.machine() == "aarch64":  # Checking if the platform is Jetson
     try:
         import Jetson.GPIO as GPIO
@@ -34,9 +32,9 @@ def seatbelt_status():
         result = {label: True if state == GPIO.HIGH else False for label, state in pin_states.items()}
 
     except GPIO.GPIOException as gpio_ex:
-        logger.error(f"GPIO Exception in seatbelt_status: {gpio_ex}")
+        print(f"GPIO Exception in seatbelt_status: {gpio_ex}")
     except Exception as e:
-        logger.error(f"Error in seatbelt_status: {e}")
+        print(f"Error in seatbelt_status: {e}")
     finally:
         GPIO.cleanup()
 

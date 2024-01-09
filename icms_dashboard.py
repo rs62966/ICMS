@@ -25,7 +25,6 @@ from helper import (
     seats_coordinates,
     time_consumer,
 )
-from seatbelt import seatbelt_status
 
 
 class Config:
@@ -78,7 +77,8 @@ class WebcamApp:
         self.monitoring = False
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.frame_process = 0
-        self.process_frame = 3
+        self.first_process_frame = 5
+        self.next_process_frame = 0
         self.last_five_frames = {}
         self.track_last_five_frames = {}
 
@@ -114,7 +114,7 @@ class WebcamApp:
                 self.display_frames()
 
                 # Log and track results every 'process_frame' frames
-                if len(self.last_five_frames) == self.process_frame:
+                if len(self.last_five_frames) == self.first_process_frame:
                     self.tracker()
 
                 # Check for the 'q' key to stop the video stream
@@ -145,14 +145,11 @@ class WebcamApp:
 
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
-        try:
-            seat_belt_status = seatbelt_status()
-        except Exception as e:
-            seat_belt_status = {"A1": False, "A2": False, "B1": False, "B2": False}
         for seat, passenger_info in self.track_last_five_frames.items():
-            color = "Green" if passenger_info.get("color") == "Yellow" and seat_belt_status.get(seat, False) else passenger_info.get("color")
-            status = "Ready" if color == "Green" else passenger_info.get("status")
+            _ , status, color = passenger_info
             self.notification_controller.update_single_seat(seat, None, color, status)
+        self.clear_frames()
+        
 
     def tracker(self):
         """Track passenger information over the last five frames."""
@@ -160,11 +157,11 @@ class WebcamApp:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
             if not self.track_last_five_frames:
                 self.track_last_five_frames = copy.deepcopy(analysis_result)
+                self.update_gui()
             else:
-                self.process_frame = 10
+                self.next_process_frame = 20
                 self.track_last_five_frames = copy.deepcopy(analysis_result)
-            self.update_gui()
-            self.clear_frames()
+                self.update_gui()
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
 

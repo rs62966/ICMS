@@ -1,3 +1,10 @@
+"""Helper of ICMS Application
+
+This application utilizes face recognition to monitor passengers in an aircraft cabin. It includes features such as seat mapping, face verification, and seatbelt status tracking.
+
+Author: Ravi Shanker Singh
+"""
+
 import logging
 import os
 import pathlib
@@ -6,19 +13,17 @@ import tkinter as tk
 from collections import defaultdict
 from datetime import datetime
 from io import BytesIO
-
+from collections import Counter
 import cv2
 import numpy as np
 from face_recognition import face_encodings, face_locations
 from PIL import Image, ImageTk
 
+from seatbelt import seatbelt_status
+
 current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
 SEAT_BEAT = False
-
-CORRECT = 1
-INCORRECT = 0
-UNAUTHORIZED = -1
 
 
 class Logger:
@@ -136,16 +141,63 @@ def seats_coordinates(data, frame_shape):
 
 # fmt: off
 class NotificationController:
-    SEAT_NAMES = ["A1", "A2", "B1", "B2"]
+    """
+    A class for managing notifications related to seat assignments and belt statuses.
+
+    Attributes:
+        ALLOWED_SEAT_NAMES (list): List of allowed seat names.
+
+    Methods:
+        __init__(self, root, dataset): Initialize the NotificationController.
+        belt_read(self): Read the status of seat belts.
+        initialize_seats(self): Initialize seat objects.
+        initialize_seat_info(self): Initialize seat information.
+        update_seat_info(self, frame_results): Update seat information based on frame results.
+        analyze_frames(self, data): Analyze frame results.
+        analysis(self, frame_results): Perform analysis on frame results.
+        update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"): Update a single seat.
+
+    """
+    ALLOWED_SEAT_NAMES = ["A1", "A2", "B1", "B2"]
     UNAUTHORIZED_NAMES = {"Unknown", "Un"}
 
-    def __init__(self, root,dataset):
+    def __init__(self, root, dataset):
+        """
+        Initialize the NotificationController.
+
+        Args:
+            root (object): The root object for the GUI.
+            dataset (list): List of passenger data.
+
+        """
         self.dataset = dataset
         self.root = root
         self.seats = self.initialize_seats()
         self.seat_info = None
+        self.passenger_track = defaultdict(list)
+
+    def belt_read(self):
+        """
+        Read the status of seat belts.
+
+        Returns:
+            dict: Dictionary with seat names as keys and seat belt status as values.
+
+        """
+        try:
+            seat_belt_status = seatbelt_status()
+        except Exception as e:
+            seat_belt_status = {seat: False for seat in self.ALLOWED_SEAT_NAMES}
+        return seat_belt_status
 
     def initialize_seats(self):
+        """
+        Initialize seat objects.
+
+        Returns:
+            dict: Dictionary with seat names as keys and Seat objects as values.
+
+        """
         seat_positions = [
             ("A1", face_img, 0.66, 0.2),
             ("A2", face_img, 0.26, 0.2),
@@ -155,6 +207,13 @@ class NotificationController:
         return {name: Seat(self.root, name, img, x, y) for name, img, x, y in seat_positions}
 
     def initialize_seat_info(self):
+        """
+        Initialize seat information.
+
+        Returns:
+            dict: Dictionary with seat names as keys and passenger names as values.
+
+        """
         default_seat_info = {
             "passenger_name": "",
             "status": "Empty",
@@ -163,7 +222,7 @@ class NotificationController:
             "passenger_embedding": None,
         }
 
-        self.seat_info = {seat_name: default_seat_info.copy() for seat_name in self.SEAT_NAMES}
+        self.seat_info = {seat_name: default_seat_info.copy() for seat_name in self.ALLOWED_SEAT_NAMES}
         if self.dataset:
             for passenger in self.dataset:
                 passenger_name, passenger_seat, passenger_embedding = passenger["passenger_dataset"]
@@ -180,71 +239,73 @@ class NotificationController:
         return {seat: passenger.get("passenger_name") for seat, passenger in self.seat_info.items()}
 
     def update_seat_info(self, frame_results):
-        self.passenger_track = defaultdict(int)
+        """
+        Update seat information based on frame results.
 
-        for frame_no, four_seat_info in frame_results.items():
-            for seat_name, passengers in four_seat_info.items():
-                name, status, score = "", "Empty", 0
-                if passengers:  
+        Args:
+            frame_results (dict): Dictionary with seat names as keys and frame results as values.
+
+        """
+        for _, seat_info in frame_results.items():
+            for seat_name, passengers in seat_info.items():
+                if passengers:
                     passenger_info = passengers[0]
-                    name, status = passenger_info.get("passenger_name", ""), "Unauthorized"
+                    name = passenger_info.get("passenger_name", "")
+                    status = "Correct" if name not in self.UNAUTHORIZED_NAMES and passenger_info["passenger_assign_seat"] == seat_name else "Incorrect" if name not in self.UNAUTHORIZED_NAMES else "Unauthorized"
+                    color = 'yellow' if status == 'Correct' else 'orange' if status == 'Incorrect' else 'red'
+                else:
+                    name, status, color = "", "Empty", "white"
+                    
+                self.passenger_track[seat_name].append((name, status, color))
 
-                    if name not in self.UNAUTHORIZED_NAMES:
-                        if passenger_info["passenger_assign_seat"] == seat_name:
-                            status = "Correct"
-                            score = CORRECT
-                        else:
-                            status = "Incorrect"
-                            score = INCORRECT
-                    else:
-                        score = UNAUTHORIZED
-                self.passenger_track[seat_name, frame_no] = (name, status, score)
+    def analyze_frames(self):
+        """
+        Analyze frame results.
 
-        return self.passenger_track
+        Args:
+            data (dict): Dictionary with seat names as keys and values as lists of frame results.
 
-    def analyze_frames(self, passenger_track):
-        seat_analysis = defaultdict(lambda: {"passenger_name": "", "status": "Empty", "score": 0})
- 
-        for seat_info, passenger_info in passenger_track.items():
-            seat_name, frame_no = seat_info
-            passenger_name, status, score = passenger_info
- 
-            seat_analysis[seat_name]["passenger_name"] = passenger_name
-            seat_analysis[seat_name]["status"] = status
-            seat_analysis[seat_name]["score"] += score
- 
-        return seat_analysis
+        Returns:
+            dict: Dictionary with seat names as keys and analyzed results as values.
 
-    def analysis(self, frame_results):
-        result = {}
-        analysis_seat_info = self.update_seat_info(frame_results)
-        passenger_track = self.analyze_frames(analysis_seat_info)
-
-        # Create a copy of the dictionary to avoid "dictionary changed size during iteration" error
-        passenger_track_copy = passenger_track.copy()
-
-        for seat, passenger_info in passenger_track_copy.items():
-            passenger_name = passenger_info.get("passenger_name", "")
-            status = passenger_info.get("status", "Empty")
-            score_count = passenger_info.get("score", 0)
-            color = "white"
-
-            if passenger_name:
-                if passenger_name in self.UNAUTHORIZED_NAMES:
-                    status = "Unauthorized"
-                    color = "Red"
-                elif score_count >= 2:
-                    status = "Correct"
-                    color = "Yellow"
-                elif score_count <= 0:
-                    status = "Incorrect"
-                    color = "Orange"
-
-            result[seat] = {"passenger_name":passenger_name ,"status": status,"color":color,"score_count":score_count}
+        """
+    
+        result = {seat: max(Counter(values).items(), key=lambda x: x[1])[0] for seat, values in self.passenger_track.items()}
         return result
 
+    def analysis(self, frame_results):
+        """
+        Perform analysis on frame results.
+
+        Args:
+            frame_results (dict): Dictionary with seat names as keys and frame results as values.
+
+        Returns:
+            dict: Dictionary with seat names as keys and analyzed results as values.
+
+        """
+        self.passenger_track.clear()
+        self.update_seat_info(frame_results)
+        result = self.analyze_frames()
+        belt_data = self.belt_read()
+        
+        updated_results = {
+            seat: seat_info[:-1] + ["green"] if seat_info[-1] == "yellow" and belt_data[seat] else seat_info
+            for seat, seat_info in result.items()
+        }
+        return updated_results
 
     def update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"):
+        """
+        Update a single seat.
+
+        Args:
+            update_seat (str or object): Seat name or Seat object to be updated.
+            image_data (bytes, optional): Image data for updating the seat's image.
+            rectangle_color (str, optional): Color of the rectangle.
+            status (str, optional): Status of the seat.
+
+        """
         seat = self.seats[update_seat] if isinstance(update_seat, str) else update_seat
 
         if image_data:
@@ -315,7 +376,6 @@ def draw_seats(frame, seat_coordinates):
         cv2.putText(frame, f"Seat {name}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2, cv2.LINE_AA)
 
     return frame
-
 
 
 def resize(image, width=None, height=None, inter=cv2.INTER_AREA):

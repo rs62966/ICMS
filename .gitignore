@@ -187,4 +187,7 @@ pyrightconfig.json
 pyvenv.cfg
 pip-selfcheck.json
 
+# Test files
+test_module.py
+
 # End of https://www.toptal.com/developers/gitignore/api/python,virtualenv,dotenv

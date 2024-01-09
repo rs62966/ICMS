@@ -246,29 +246,28 @@ class NotificationController:
             frame_results (dict): Dictionary with seat names as keys and frame results as values.
 
         """
+        belt_data = self.belt_read()
         for _, seat_info in frame_results.items():
-            belt_data = self.belt_read()
             for seat_name, passengers in seat_info.items():
                 if passengers:
                     passenger_info = passengers[0]
                     name = passenger_info.get("passenger_name", "")
-                    if name in self.UNAUTHORIZED_NAMES:
-                        status = "Unauthorized" 
-                        color  = "red"
-
-                    elif name not in self.UNAUTHORIZED_NAMES and passenger_info["passenger_assign_seat"] == seat_name :
-                        status = "Correct" 
-                        color  = "yellow"
-                        if belt_data.get(seat_name, False):
-                            status = "Reay"
-                            color = "green"
-                    else:
-                        status = "Incorrect" 
-                        color  = "orange"
+                    status, color = self.get_passenger_status_color(name, passenger_info, seat_name, belt_data)
                 else:
                     name, status, color = "", "Empty", "white"
-                    
+
                 self.passenger_track[seat_name].append((name, status, color))
+
+    def get_passenger_status_color(self, name, passenger_info, seat_name, belt_data):
+        """Get passenger status and color."""
+
+        if name in self.UNAUTHORIZED_NAMES:
+            return "Unauthorized", "red"
+
+        elif name not in self.UNAUTHORIZED_NAMES and passenger_info["passenger_assign_seat"] == seat_name:
+            return "Ready" if belt_data.get(seat_name, False) else "Correct", "green" if belt_data.get(seat_name, False) else "yellow"
+
+        return "Incorrect", "orange"
 
     def analyze_frames(self):
         """
@@ -298,15 +297,7 @@ class NotificationController:
         """
         self.passenger_track.clear()
         self.update_seat_info(frame_results)
-        result = self.analyze_frames()
-        # belt_data = self.belt_read()
-        
-        # updated_results = {
-        #     seat: tuple(seat_info[:-2]) + ("Ready","green") if seat_info[-1] == "yellow" and belt_data[seat] else seat_info
-        #     for seat, seat_info in result.items()
-        # }
-        
-        return result
+        return self.analyze_frames()
 
 
     def update_single_seat(self, update_seat, image_data=None, rectangle_color="white", status="Empty"):
@@ -405,7 +396,7 @@ def resize(image, width=None, height=None, inter=cv2.INTER_AREA):
     return resized
 
 
-def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.6):
+def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0.55):
     """
     Perform face verification by comparing the embedding vectors from the database.
     """

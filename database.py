@@ -7,7 +7,7 @@ import numpy as np
 from dotenv import load_dotenv
 from face_recognition import face_encodings
 
-from helper import Logger
+from log import Logger
 
 # Load environment variables from .env file
 load_dotenv()

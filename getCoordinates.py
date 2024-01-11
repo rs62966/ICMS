@@ -3,7 +3,8 @@ import pathlib
 
 import cv2
 
-from helper import Logger, seats_coordinates
+from helper import seats_coordinates
+from log import Logger
 
 # Set up logging
 logger = Logger("Coordinate Creator")

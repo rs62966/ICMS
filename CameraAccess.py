@@ -3,7 +3,7 @@ from threading import Thread
 
 import cv2
 
-from helper import Logger
+from log import Logger
 
 # Set up logging
 logger = Logger("WebcamStream")

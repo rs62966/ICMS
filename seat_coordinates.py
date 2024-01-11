@@ -1,11 +1,6 @@
-import pathlib
-from timeit import default_timer as timer
-
-start = timer()
-
-
 import json
 import os
+import pathlib
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import os
@@ -18,7 +13,8 @@ from face_recognition import face_locations
 from keras.models import load_model
 
 from CameraAccess import create_webcam_stream
-from helper import Logger, draw_seats, seats_coordinates
+from helper import draw_seats, seats_coordinates
+from log import Logger
 
 # Set up logging
 logger = Logger("Test Coordinate")
@@ -120,5 +116,3 @@ def main(face_detection=True, seat_belt_detection=False):
 
 if __name__ == "__main__":
     main()
-    end = timer()
-    print("Elapsed time: " + str(end - start))

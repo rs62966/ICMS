@@ -142,11 +142,12 @@ class WebcamApp:
 
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
-
         empty_skip_notification = self.empty_skip_update_notification
 
         for seat, (index, status, color) in self.track_last_five_frames.items():
             if status == "Empty":
+                if self.ui_statbility[seat] is None:
+                    self.ui_statbility[seat] = 0  # Initialize to 0 if it's None
                 self.ui_statbility[seat] += 1
                 for key, value in self.ui_statbility.items():
                     if value == empty_skip_notification:
@@ -154,7 +155,9 @@ class WebcamApp:
                         self.ui_statbility[key] = None
             else:
                 self.notification_controller.update_single_seat(seat, None, color, status)
+        
         self.clear_frames()
+
         
 
     def tracker(self):

@@ -3,14 +3,12 @@ import os
 import pathlib
 import platform
 import re
-import subprocess
-import sys
 
 import cv2
 import pkg_resources
 
 from database import get_passenger_data
-from helper import Logger
+from log import Logger
 from seatbelt import seatbelt_status
 
 logger = Logger(module="Check ICMS Dependency")

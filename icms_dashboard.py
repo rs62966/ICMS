@@ -16,9 +16,9 @@ import cv2
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import (Logger, NotificationController, do_face_verification,
-                    draw_seats, process_faces, seats_coordinates,
-                    time_consumer)
+from helper import (NotificationController, do_face_verification, draw_seats,
+                    process_faces, seats_coordinates, time_consumer)
+from log import Logger
 
 
 class Config:
@@ -43,6 +43,8 @@ logger = Logger(module="ICMS Dashboard")
 # fmt: off
 class WebcamApp:
     """Main class for the ICMS Dashboard application."""
+    
+   
 
     def __init__(self, root):
         """Initialize the application."""
@@ -72,9 +74,10 @@ class WebcamApp:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         self.frame_process = 0
         self.first_process_frame = 5
-        self.next_process_frame = 0
         self.last_five_frames = {}
         self.track_last_five_frames = {}
+        self.empty_skip_update_notification = 5
+        self.ui_statbility = {"A1": None, "A2": None, "B1": None, "B2": None}
 
     def start_monitoring(self):
         """Start the monitoring process."""
@@ -139,9 +142,18 @@ class WebcamApp:
 
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
-        for seat, passenger_info in self.track_last_five_frames.items():
-            _ , status, color = passenger_info
-            self.notification_controller.update_single_seat(seat, None, color, status)
+
+        empty_skip_notification = self.empty_skip_update_notification
+
+        for seat, (index, status, color) in self.track_last_five_frames.items():
+            if status == "Empty":
+                self.ui_statbility[seat] += 1
+                for key, value in self.ui_statbility.items():
+                    if value == empty_skip_notification:
+                        self.notification_controller.update_single_seat(seat, None, color, status)
+                        self.ui_statbility[key] = None
+            else:
+                self.notification_controller.update_single_seat(seat, None, color, status)
         self.clear_frames()
         
 
@@ -149,13 +161,9 @@ class WebcamApp:
         """Track passenger information over the last five frames."""
         try:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
-            if not self.track_last_five_frames:
-                self.track_last_five_frames = copy.deepcopy(analysis_result)
-                self.update_gui()
-            else:
-                self.next_process_frame = 10
-                self.track_last_five_frames = copy.deepcopy(analysis_result)
-                self.update_gui()
+            self.track_last_five_frames = copy.deepcopy(analysis_result)
+            self.update_gui()
+        
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
 
@@ -164,6 +172,7 @@ class WebcamApp:
         self.last_five_frames.clear()
         self.track_last_five_frames.clear()
 
+    @time_consumer
     def process_frames(self):
         """Process frames and store face signatures."""
         try:

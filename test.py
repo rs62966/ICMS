@@ -1,6 +1,6 @@
-
 import customtkinter as tk
 from PIL import Image, ImageTk
+
 
 class Seat:
     def __init__(self, root, label, image_path, x_rel, y_rel):
@@ -35,6 +35,7 @@ class Seat:
     #     self.rectangle_text = status
     #     self.rectangle_canvas_status.itemconfig(self.status_text, text=status)
 
+
 class WebcamApp(tk.CTk):
     def __init__(self):
         super().__init__()
@@ -57,19 +58,51 @@ class WebcamApp(tk.CTk):
         seats = {name: Seat(self, name, img, x, y) for name, img, x, y in seat_positions}
         return seats
 
-face_img = current.joinpath("Images", "face_icon.png")
-CONFIG = Config()
-app = WebcamApp()
-app.mainloop()
 
+# face_img = current.joinpath("Images", "face_icon.png")
+# CONFIG = Config()
+# app = WebcamApp()
+# app.mainloop()
 
 
 import pyttsx3
+import speech_recognition as sr
+import time
+
+
 engine = pyttsx3.init()
-voices = engine.getProperty('voices')
-voices  
-[<pyttsx3.voice.Voice object at 0x0000022F54E05D90>, <pyttsx3.voice.Voice object at 0x0000022F54E05EE0>]
-voices[0].name
-'Microsoft David Desktop - English (United States)'
-voices[1].name
-'Microsoft Zira Desktop - English (United States)'
+voices = engine.getProperty("voices")
+
+
+def create_engine():
+    r = sr.Recognizer()
+    engine = pyttsx3.init()
+    engine.setProperty("rate", 100)
+    try:
+        engine.setProperty("voice", voices[22].id)
+    except Exception as e:
+        engine.setProperty("voice", voices[0].id)
+    return engine, r
+
+
+def speak(audio):
+    engine.say(audio)
+    engine.runAndWait()
+
+
+name = "Ravi"
+message = f"Dear {name} Welcome to Onboard"
+voices = engine.getProperty("voices")
+# for voice in voices:
+#     engine.setProperty("voice", voice.id)
+#     print(voice.id, '-->', voice.name)
+#     speak(message)
+#     time.sleep(2)
+
+
+test = {"Ravi": True, "Rahul": True}
+
+if name not in test.keys():
+    print("Work")
+else:
+    print("not work")

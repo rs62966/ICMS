@@ -23,7 +23,6 @@ import speech_recognition as sr
 import pyttsx3
 
 
-
 current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
 SEAT_BEAT = False
@@ -365,12 +364,11 @@ def time_consumer(func):
 def create_engine():
     r = sr.Recognizer()
     engine = pyttsx3.init()
+    engine.setProperty("rate", 100)
     voices = engine.getProperty('voices')
-    engine.setProperty("rate", 145)
+    # For Codec USB Sound Card in set Persian voice tone 22, hindi 29 or english 12 
     try:
-        engine.setProperty("voice", voices[1].id)
+        engine.setProperty("voice", voices[22].id)
     except Exception as e:
         engine.setProperty("voice", voices[0].id)
     return engine, r
-
-

@@ -150,16 +150,10 @@ class WebcamApp:
         }
         return log_info
     
-    def update_gui_async(self):
-        """Update GUI asynchronously."""
-        threading.Thread(target=self.update_gui).start()  
-
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
         empty_skip_notification = self.empty_skip_update_notification
-        welcome_notification = self.welcome_notification  # Avoid repeated lookups
         reset_seats = False
-        
         for seat, (name, status, color) in self.track_last_five_frames.items():
             message = None
             
@@ -169,11 +163,12 @@ class WebcamApp:
                     self.notification_controller.update_single_seat(seat, None, color, status)
                     reset_seats = True
             else:
-                if color == 'yellow' and name not in welcome_notification:
-                    message = f"Dear {name}, Welcome onboard"
-                    welcome_notification[name] = True
+                self.notification_controller.update_single_seat(seat, None, color, status)
+                if color == 'yellow' and name not in self.welcome_notification:
+                    message = f"Dear {name} Welcome onboard"
+                    self.welcome_notification[name] = True
                 elif color == 'orange':
-                    message = f"On seat {seat}, wrong passenger"
+                    message = f"Seat {seat} Wrong passenger"
                 elif color == 'red':
                     message = "Unauthorized access"
                 if message:
@@ -181,17 +176,14 @@ class WebcamApp:
 
         if reset_seats:
             self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}  # Reset all seats
-        self.clear_frames()
-        self.root.after(100, self.update_gui_async)
-
-
 
     def tracker(self):
         """Track passenger information over the last five frames."""
         try:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
             self.track_last_five_frames = copy.deepcopy(analysis_result)
-            self.update_gui_async()
+            self.update_gui()
+            self.clear_frames()
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
 
@@ -206,25 +198,19 @@ class WebcamApp:
             result = process_faces(self.frame, self.seat_coordinate)
             frame_info = {"A1": [], "A2": [], "B1": [], "B2": []}
 
-            # Use joblib to parallelize the processing of faces
-            parallel_result = Parallel(n_jobs=-1, prefer="threads")(
-                delayed(self.process_seat_info)(passenger_face_embedding)
-                for seat_name, passenger_face_embedding in result.items()
-                if len(passenger_face_embedding) == 1
-            )
-
-            # Update frame_info with the parallel results
-            for seat_name, log_info in zip(result.keys(), parallel_result):
-                frame_info[seat_name].append(log_info)
-
+            for seat_name, passenger_face_embedding in result.items():
+                if len(passenger_face_embedding) == 1:
+                    log_info = self.process_seat_info(passenger_face_embedding)
+                    frame_info[seat_name].append(log_info)
             self.last_five_frames[self.frame_process] = frame_info
+
         except Exception as e:
             logger.error(f"Error in process_frames: {e}")
 
     def display_frames(self):
         """Display frames with seat status."""
-        # cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow("Cabin monitoring", 600, 300)
+        cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Cabin monitoring", 600, 300)
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
 

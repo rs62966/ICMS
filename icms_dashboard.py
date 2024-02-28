@@ -9,6 +9,7 @@ import copy
 import json
 import pathlib
 import sys
+import threading
 import tkinter as tk
 from tkinter import PhotoImage
 
@@ -148,40 +149,49 @@ class WebcamApp:
             "passenger_match_distance": match_distance,
         }
         return log_info
+    
+    def update_gui_async(self):
+        """Update GUI asynchronously."""
+        threading.Thread(target=self.update_gui).start()  
 
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
         empty_skip_notification = self.empty_skip_update_notification
-
+        welcome_notification = self.welcome_notification  # Avoid repeated lookups
+        reset_seats = False
+        
         for seat, (name, status, color) in self.track_last_five_frames.items():
+            message = None
+            
             if status == "Empty":
-                self.ui_statbility[seat] += 1  # Initialize to 0 if it's None
-                for key, value in self.ui_statbility.items():
-                    if value == empty_skip_notification:
-                        self.notification_controller.update_single_seat(seat, None, color, status)
-                        self.ui_statbility[key] = 0
+                self.ui_statbility[seat] += 1
+                if any(value == empty_skip_notification for value in self.ui_statbility.values()):
+                    self.notification_controller.update_single_seat(seat, None, color, status)
+                    reset_seats = True
             else:
-                weclome_message = f"Dear {name}, Welcome to Onboard"
-                incorrect_message = f"Dear {name}, Wrong Seat Occupied"
-                unauthorize_message = f"Unauthorized Access"
-
-                if color in ['yellow', 'green'] and name not in self.welcome_notification.keys():
-                    self.speak(weclome_message)
-                    self.welcome_notification[name] = True
+                if color == 'yellow' and name not in welcome_notification:
+                    message = f"Dear {name}, Welcome onboard"
+                    welcome_notification[name] = True
                 elif color == 'orange':
-                    self.speak(incorrect_message)
+                    message = f"On seat {seat}, wrong passenger"
                 elif color == 'red':
-                    self.speak(unauthorize_message)
-                self.notification_controller.update_single_seat(seat, None, color, status)
+                    message = "Unauthorized access"
+                if message:
+                    self.speak(message)
+
+        if reset_seats:
+            self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}  # Reset all seats
         self.clear_frames()
+        self.root.after(100, self.update_gui_async)
+
+
 
     def tracker(self):
         """Track passenger information over the last five frames."""
         try:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
             self.track_last_five_frames = copy.deepcopy(analysis_result)
-            self.update_gui()
-        
+            self.update_gui_async()
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
 

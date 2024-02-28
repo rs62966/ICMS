@@ -364,7 +364,7 @@ def time_consumer(func):
 def create_engine():
     r = sr.Recognizer()
     engine = pyttsx3.init()
-    engine.setProperty("rate", 100)
+    engine.setProperty("rate", 125)
     voices = engine.getProperty('voices')
     # For Codec USB Sound Card in set Persian voice tone 22, hindi 29 or english 12 
     try:

@@ -1,101 +1,75 @@
-import json
-import pathlib
-import time
 
-import cv2
-import mediapipe as mp
+import customtkinter as tk
+from PIL import Image, ImageTk
 
-from CameraAccess import create_webcam_stream
-from helper import (draw_seats, seats_coordinates,  # ,process_faces
-                    time_consumer)
-from log import Logger
+class Seat:
+    def __init__(self, root, label, image_path, x_rel, y_rel):
+        self.seat_name = label
+        self.label = tk.CTkLabel(root, text=label, font=("Arial", 18), fg_color="white", width=5, height=3)
+        self.label.place(relx=x_rel, rely=y_rel, anchor="center")
+        self.image_label = tk.CTkLabel(root)
+        self.image_label.place(relx=x_rel + 0.06, rely=y_rel + 0.17, anchor="center")
+        image = Image.open(image_path)
+        tk_image = ImageTk.PhotoImage(image)
 
+        self.default_image = tk_image
+        self.image_label.configure(height=200, width=317, image=self.default_image)
 
-class Config:
-    """Configuration class for ICMS Dashboard."""
+        self.rectangle_color = "white"
+        self.rectangle_width = 200
+        self.rectangle_height = 80
+        self.rectangle_text = "Empty"
 
+    #     self.rectangle_canvas_status = tk.CTkLabel(root, width=self.rectangle_width, height=self.rectangle_height, fg_color=self.rectangle_color)
+    #     self.rectangle_canvas_status.place(relx=x_rel + 0.09, rely=y_rel, anchor="center")
+    #     self.status_text = self.rectangle_canvas_status.create_text(
+    #         self.rectangle_width / 2,
+    #         self.rectangle_height / 2,
+    #         text=self.rectangle_text,
+    #         fill="black",
+    #         font=("Arial", 12, "bold"),
+    #     )
+
+    # def change_rectangle_color(self, new_color, status):
+    #     self.rectangle_canvas_status.config(fg_color=new_color)
+    #     self.rectangle_text = status
+    #     self.rectangle_canvas_status.itemconfig(self.status_text, text=status)
+
+class WebcamApp(tk.CTk):
     def __init__(self):
-        """Initialize configuration parameters."""
-        current = pathlib.Path(__file__).parent.resolve()
-        self.background = current.joinpath("Images", "home.png")
+        super().__init__()
+        self.geometry("1920x1200")
+        self.title("ICMS Dashboard")
+        # Set up GUI elements
+        self.bg_image = ImageTk.PhotoImage(file=CONFIG.background)
+        self.bg_label = tk.CTkLabel(self, image=self.bg_image)
+        self.bg_label.place(relwidth=1, relheight=1)
 
-        with open(current.joinpath("config.json")) as data_file:
-            data = json.load(data_file)
+        self.initialize_seats()
 
-        self.camera_source_1 = data["CAMERA"]["FIRST_CAMERA_INDEX"]
-        self.camera_source_2 = data["CAMERA"]["SECOND_CAMERA_INDEX"]
-        self.seat_coordinates = seats_coordinates(data["SEAT_COORDINATES"], data["FRAME_SHAPE"])
+    def initialize_seats(self):
+        seat_positions = [
+            ("A1", face_img, 0.66, 0.2),
+            ("A2", face_img, 0.26, 0.2),
+            ("B1", face_img, 0.66, 0.58),
+            ("B2", face_img, 0.26, 0.58),
+        ]
+        seats = {name: Seat(self, name, img, x, y) for name, img, x, y in seat_positions}
+        return seats
 
-
-def process_faces(frame, seat_coordinates, face_detection):
-    """
-    Process faces in the given frame and return a dictionary with seat information.
-    """
-    processed_seats = {}
-
-    for x1, y1, x2, y2, seat_name in seat_coordinates:
-        seat_roi = frame[y2:y1, x1:x2]
-
-        # Resize the image for faster processing
-        small_seat_roi = cv2.resize(seat_roi, (0, 0), fx=0.5, fy=0.5)
-
-        # Convert the image to RGB
-        rgb_seat_roi = cv2.cvtColor(small_seat_roi, cv2.COLOR_BGR2RGB)
-
-        # Run face detection
-        results = face_detection.process(rgb_seat_roi)
-
-        # If a face is detected, get the face encoding
-        if results.detections:
-            face_detection_data = results.detections[0]
-            bboxC = face_detection_data.location_data.relative_bounding_box
-            ih, iw, _ = rgb_seat_roi.shape
-            x, y, w, h = int(bboxC.xmin * iw), int(bboxC.ymin * ih), int(bboxC.width * iw), int(bboxC.height * ih)
-
-            face_roi = rgb_seat_roi[y : y + h, x : x + w]
-
-            # You can further process the face_roi if needed
-
-            processed_seats[seat_name] = face_roi
-        else:
-            processed_seats[seat_name] = []
-
-    return processed_seats
+face_img = current.joinpath("Images", "face_icon.png")
+CONFIG = Config()
+app = WebcamApp()
+app.mainloop()
 
 
-@time_consumer
-def test_time(frame, seat_coordinates, mp_face_detection):
-    processed_seats = process_faces(frame, seat_coordinates, mp_face_detection)
-    logger.info(f"processed_seats {[{key:len(value)} for key , value in processed_seats.items()]}")
-    # Display frames with seat ROI for seat mapping
-    cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("Cabin monitoring", 600, 300)
-    draw_seats(frame, CONFIG.seat_coordinates)
-    cv2.imshow("Cabin monitoring", frame)
-    time.sleep(1)
 
-
-if __name__ == "__main__":
-    CONFIG = Config()
-    logger = Logger(module="TEST Dashboard")
-    try:
-        mp_face_detection = mp.solutions.face_detection.FaceDetection(min_detection_confidence=0.5)
-        vid = create_webcam_stream(CONFIG.camera_source_1, CONFIG.camera_source_2)
-        vid.start()
-
-        while True:
-            if vid.stopped:
-                break
-
-            frame = vid.read()
-            if frame is not None:
-                # Process frames and store every seat face signature
-                test_time(frame, CONFIG.seat_coordinates, mp_face_detection)
-                # Check for the 'q' key to stop the video stream
-                key = cv2.waitKey(1)
-                if key == ord("q"):
-                    vid.stop()
-                    cv2.destroyAllWindows()
-                    break
-    except Exception as e:
-        logger.error(f"Error in show_frames: {e}")
+import pyttsx3
+engine = pyttsx3.init()
+voices = engine.getProperty('voices')
+voices  
+[<pyttsx3.voice.Voice object at 0x0000022F54E05D90>, <pyttsx3.voice.Voice object at 0x0000022F54E05EE0>]
+voices[0].name
+'Microsoft David Desktop - English (United States)'
+voices[1].name
+'Microsoft Zira Desktop - English (United States)'

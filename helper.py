@@ -10,16 +10,19 @@ import pathlib
 import time
 import tkinter as tk
 from collections import Counter, defaultdict
-from datetime import datetime
 from io import BytesIO
 
 import cv2
 import numpy as np
 from face_recognition import face_encodings, face_locations
 from PIL import Image, ImageTk
-
+from joblib import Parallel, delayed
 from log import Logger
 from seatbelt import seatbelt_status
+import speech_recognition as sr
+import pyttsx3
+
+
 
 current = pathlib.Path(__file__).parent.resolve()
 face_img = current.joinpath("Images", "face_icon.png")
@@ -274,25 +277,22 @@ class NotificationController:
         seat.change_rectangle_color(rectangle_color, status)
 
 
-
 def process_faces(frame, seat_coordinates):
     """
     Process faces in the given frame and return a dictionary with seat information.
     """
-    processed_seats = {}
-
-    for x1, y1, x2, y2, seat_name in seat_coordinates:
+    def process_seat(x1, y1, x2, y2, seat_name):
         seat_roi = frame[y2:y1, x1:x2]
         rgb_seat_roi = cv2.cvtColor(seat_roi, cv2.COLOR_BGR2RGB)
         face_area = face_locations(rgb_seat_roi)
 
         if len(face_area) == 1:
             face_encoding = face_encodings(rgb_seat_roi, face_area)
-            processed_seats[seat_name] = face_encoding
+            return seat_name, face_encoding
         else:
-            processed_seats[seat_name] = []
+            return seat_name, []
 
-    return processed_seats
+    return dict(Parallel(n_jobs=-1)(delayed(process_seat)(x1, y1, x2, y2, seat_name) for x1, y1, x2, y2, seat_name in seat_coordinates))
 
 
 def draw_seats(frame, seat_coordinates):
@@ -341,7 +341,6 @@ def do_face_verification(database_faces_embed, passanger_face_embed, tolerance=0
         return "Unknown", "Un", min_distance
     return passenger_info
 
-
 def time_consumer(func):
     """_summary_
 
@@ -361,3 +360,17 @@ def time_consumer(func):
         return result
 
     return wrap_func
+
+
+def create_engine():
+    r = sr.Recognizer()
+    engine = pyttsx3.init()
+    voices = engine.getProperty('voices')
+    engine.setProperty("rate", 145)
+    try:
+        engine.setProperty("voice", voices[1].id)
+    except Exception as e:
+        engine.setProperty("voice", voices[0].id)
+    return engine, r
+
+

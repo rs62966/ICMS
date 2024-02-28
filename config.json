@@ -1,13 +1,13 @@
 {
   "CAMERA": {
-    "FIRST_CAMERA_INDEX": 5,
-    "SECOND_CAMERA_INDEX": 4
+    "FIRST_CAMERA_INDEX": 4,
+    "SECOND_CAMERA_INDEX": 5
   },
   "SEAT_COORDINATES": {
     "A1": [0.00, 0.55, 0.24, 0.05],
     "A2": [0.25, 0.55, 0.5, 0.05],
-    "B1": [0.51, 0.65, 0.75, 0.05],
-    "B2": [0.76, 0.65, 1.0, 0.05]
+    "B1": [0.51, 0.55, 0.75, 0.05],
+    "B2": [0.76, 0.55, 1.0, 0.05]
   },
   "FRAME_SHAPE": [480, 1280, 3],
   "SEAT_COORDINATES_OLD": {

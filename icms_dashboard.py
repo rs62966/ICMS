@@ -16,9 +16,10 @@ import cv2
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import (NotificationController, do_face_verification, draw_seats,
+from helper import (NotificationController, create_engine, do_face_verification, draw_seats,
                     process_faces, seats_coordinates, time_consumer)
 from log import Logger
+from joblib import Parallel, delayed
 
 
 class Config:
@@ -29,7 +30,7 @@ class Config:
         current = pathlib.Path(__file__).parent.resolve()
         self.background = current.joinpath("Images", "home.png")
 
-        with open(current.joinpath("config.json")) as data_file:
+        with open("config.json") as data_file:
             data = json.load(data_file)
 
         self.camera_source_1 = data["CAMERA"]["FIRST_CAMERA_INDEX"]
@@ -39,12 +40,14 @@ class Config:
 
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
+engine, r = create_engine()
+
+
+
 
 # fmt: off
 class WebcamApp:
     """Main class for the ICMS Dashboard application."""
-    
-   
 
     def __init__(self, root):
         """Initialize the application."""
@@ -77,12 +80,19 @@ class WebcamApp:
         self.last_five_frames = {}
         self.track_last_five_frames = {}
         self.empty_skip_update_notification = 5
-        self.ui_statbility = {"A1": None, "A2": None, "B1": None, "B2": None}
+        self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}
+
+    @classmethod
+    def speak(cls, audio):
+        engine.say(audio)
+        engine.runAndWait()
 
     def start_monitoring(self):
         """Start the monitoring process."""
         dataset = self.notification_controller.initialize_seat_info()
         logger.info(f"Database Loaded for {dataset}")
+        message = f"Welcome to Cyient UAM"
+        self.speak(message)
         if not self.monitoring:
             self.monitoring = True
         self.start_webcam()
@@ -93,7 +103,7 @@ class WebcamApp:
         self.vid.start()
         self.show_frames()
 
-    # @time_consumer
+    @time_consumer
     def show_frames(self):
         """Display frames from the webcam."""
         try:
@@ -142,20 +152,21 @@ class WebcamApp:
 
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
-
         empty_skip_notification = self.empty_skip_update_notification
 
-        for seat, (index, status, color) in self.track_last_five_frames.items():
+        for seat, (name, status, color) in self.track_last_five_frames.items():
             if status == "Empty":
-                self.ui_statbility[seat] += 1
+                self.ui_statbility[seat] += 1  # Initialize to 0 if it's None
                 for key, value in self.ui_statbility.items():
                     if value == empty_skip_notification:
                         self.notification_controller.update_single_seat(seat, None, color, status)
-                        self.ui_statbility[key] = None
+                        self.ui_statbility[key] = 0
             else:
+                message = f"Welcome to {seat} on {name} with Status of {status}"
+                print(message)
+                self.speak(message)
                 self.notification_controller.update_single_seat(seat, None, color, status)
         self.clear_frames()
-        
 
     def tracker(self):
         """Track passenger information over the last five frames."""
@@ -171,26 +182,32 @@ class WebcamApp:
         """Clear tracked and last five frames."""
         self.last_five_frames.clear()
         self.track_last_five_frames.clear()
-
-    @time_consumer
+    
     def process_frames(self):
         """Process frames and store face signatures."""
         try:
             result = process_faces(self.frame, self.seat_coordinate)
             frame_info = {"A1": [], "A2": [], "B1": [], "B2": []}
 
-            for seat_name, passenger_face_embedding in result.items():
-                if len(passenger_face_embedding) == 1:
-                    log_info = self.process_seat_info(passenger_face_embedding)
-                    frame_info[seat_name].append(log_info)
+            # Use joblib to parallelize the processing of faces
+            parallel_result = Parallel(n_jobs=-1, prefer="threads")(
+                delayed(self.process_seat_info)(passenger_face_embedding)
+                for seat_name, passenger_face_embedding in result.items()
+                if len(passenger_face_embedding) == 1
+            )
+
+            # Update frame_info with the parallel results
+            for seat_name, log_info in zip(result.keys(), parallel_result):
+                frame_info[seat_name].append(log_info)
+
             self.last_five_frames[self.frame_process] = frame_info
         except Exception as e:
             logger.error(f"Error in process_frames: {e}")
 
     def display_frames(self):
         """Display frames with seat status."""
-        cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("Cabin monitoring", 600, 300)
+        # cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
+        # cv2.resizeWindow("Cabin monitoring", 600, 300)
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
 

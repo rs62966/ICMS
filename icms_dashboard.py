@@ -16,8 +16,7 @@ import cv2
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import (NotificationController, create_engine, do_face_verification, draw_seats,
-                    process_faces, seats_coordinates, time_consumer)
+from helper import NotificationController, create_engine, do_face_verification, draw_seats, process_faces, seats_coordinates, time_consumer
 from log import Logger
 from joblib import Parallel, delayed
 
@@ -41,8 +40,6 @@ class Config:
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
 engine, r = create_engine()
-
-
 
 
 # fmt: off
@@ -81,6 +78,8 @@ class WebcamApp:
         self.track_last_five_frames = {}
         self.empty_skip_update_notification = 5
         self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}
+        self.welcome_notification = {}
+
 
     @classmethod
     def speak(cls, audio):
@@ -162,9 +161,17 @@ class WebcamApp:
                         self.notification_controller.update_single_seat(seat, None, color, status)
                         self.ui_statbility[key] = 0
             else:
-                message = f"Welcome to {seat} on {name} with Status of {status}"
-                print(message)
-                self.speak(message)
+                weclome_message = f"Dear {name}, Welcome to Onboard"
+                incorrect_message = f"Dear {name}, Wrong Seat Occupied"
+                unauthorize_message = f"Unauthorized Access"
+
+                if color in ['yellow', 'green'] and name not in self.welcome_notification.keys():
+                    self.speak(weclome_message)
+                    self.welcome_notification[name] = True
+                elif color == 'orange':
+                    self.speak(incorrect_message)
+                elif color == 'red':
+                    self.speak(unauthorize_message)
                 self.notification_controller.update_single_seat(seat, None, color, status)
         self.clear_frames()
 

@@ -9,7 +9,6 @@ import copy
 import json
 import pathlib
 import sys
-import threading
 import tkinter as tk
 from tkinter import PhotoImage
 
@@ -17,9 +16,8 @@ import cv2
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import NotificationController, create_engine, do_face_verification, draw_seats, process_faces, seats_coordinates, time_consumer
+from helper import NotificationController,play_voice_mp3, do_face_verification, draw_seats, process_faces, seats_coordinates, time_consumer
 from log import Logger
-from joblib import Parallel, delayed
 
 
 class Config:
@@ -40,7 +38,6 @@ class Config:
 
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
-engine, r = create_engine()
 
 
 # fmt: off
@@ -81,18 +78,12 @@ class WebcamApp:
         self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}
         self.welcome_notification = {}
 
-
-    @classmethod
-    def speak(cls, audio):
-        engine.say(audio)
-        engine.runAndWait()
-
     def start_monitoring(self):
         """Start the monitoring process."""
         dataset = self.notification_controller.initialize_seat_info()
         logger.info(f"Database Loaded for {dataset}")
-        message = f"Welcome to Cyient UAM"
-        self.speak(message)
+        message = "Welcome"
+        play_voice_mp3(message)
         if not self.monitoring:
             self.monitoring = True
         self.start_webcam()
@@ -164,15 +155,20 @@ class WebcamApp:
                     reset_seats = True
             else:
                 self.notification_controller.update_single_seat(seat, None, color, status)
-                if color == 'yellow' and name not in self.welcome_notification:
-                    message = f"Dear {name} Welcome onboard"
+                if color == 'green' and name not in self.welcome_notification:
+                    message = f"welcome_{name}"
                     self.welcome_notification[name] = True
+                elif color == 'yellow':
+                    message = f"seltbelt_{name}"
                 elif color == 'orange':
-                    message = f"Seat {seat} Wrong passenger"
+                    message = seat
                 elif color == 'red':
-                    message = "Unauthorized access"
+                    message = "message_unauthorize"
+                elif color ==  "all_green":
+                    message = "message_takeoff"
+                    
                 if message:
-                    self.speak(message)
+                    play_voice_mp3(message)
 
         if reset_seats:
             self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}  # Reset all seats

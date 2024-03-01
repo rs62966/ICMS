@@ -1,5 +1,8 @@
+import time
+import pygame
 import pyttsx3
-import speech_recognition as sr
+from helper import play_voice_text
+
 
 engine = pyttsx3.init()
 voices = engine.getProperty("voices")
@@ -7,17 +10,6 @@ voices = engine.getProperty("voices")
 name = "Ravi Shanker Singh"
 message = f"Dear {name} Welcome to Onboard"
 
-def create_engine():
-    r = sr.Recognizer()
-    engine = pyttsx3.init()
-    engine.setProperty("rate", 125)
-    voices = engine.getProperty('voices')
-    # For Codec USB Sound Card in set Persian voice tone 22, hindi 29 or english 12 
-    try:
-        engine.setProperty("voice", voices[22].id)
-    except Exception as e:
-        engine.setProperty("voice", voices[0].id)
-    return engine, r
 
 
 class WebcamApp:
@@ -55,8 +47,28 @@ class WebcamApp:
                     self.speak(unauthorize_message)
         self.clear_frames()
 
-seat = "A1"
-message = f"Seat {seat}, wrong passenger"
 
-engine.say(message)
-engine.runAndWait()
+def play_voice_mp3(mp3_file):
+    """Create voice from https://www.narakeet.com/
+            VOICE: Pooja
+            LANGUAGE: English - Indian Accent
+            SCRIPT : voice_message\text_script.txt
+
+    Args:
+        mp3_file (_type_): _description_
+    """
+    pygame.mixer.init()
+    pygame.mixer.music.load(mp3_file)
+    pygame.mixer.music.play()
+
+
+# Example usage:
+name = "Ravi Shanker Singh"
+message_text = f"Dear {name}, Welcome to Onboard"
+message_mp3 = "voices//Ready for Takeoff.mp3"  # Path to the MP3 file
+
+# Play voice from text
+# play_voice_text(message_text)
+# Play voice from MP3 file
+play_voice_mp3(message_mp3)
+time.sleep(1.5)

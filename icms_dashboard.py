@@ -147,7 +147,6 @@ class WebcamApp:
         reset_seats = False
         for seat, (name, status, color) in self.track_last_five_frames.items():
             message = None
-            
             if status == "Empty":
                 self.ui_statbility[seat] += 1
                 if any(value == empty_skip_notification for value in self.ui_statbility.values()):
@@ -155,7 +154,7 @@ class WebcamApp:
                     reset_seats = True
             else:
                 self.notification_controller.update_single_seat(seat, None, color, status)
-                if color == 'green' and name not in self.welcome_notification:
+                if all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and name not in self.welcome_notification:
                     message = f"welcome_{name}"
                     self.welcome_notification[name] = True
                 elif color == 'yellow':

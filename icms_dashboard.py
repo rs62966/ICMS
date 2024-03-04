@@ -155,6 +155,9 @@ class WebcamApp:
             else:
                 self.notification_controller.update_single_seat(seat, None, color, status)
                 if all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and name not in self.welcome_notification:
+                    message = "message_takeoff"
+                    self.welcome_notification[name] = True
+                if color == 'green' and name not in self.welcome_notification:
                     message = f"welcome_{name}"
                     self.welcome_notification[name] = True
                 elif color == 'yellow':

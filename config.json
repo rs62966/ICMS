@@ -1,7 +1,7 @@
 {
   "CAMERA": {
-    "FIRST_CAMERA_INDEX": 5,
-    "SECOND_CAMERA_INDEX": 4
+    "FIRST_CAMERA_INDEX": 4,
+    "SECOND_CAMERA_INDEX": 5
   },
   "SEAT_COORDINATES": {
     "A1": [0.00, 0.55, 0.24, 0.05],

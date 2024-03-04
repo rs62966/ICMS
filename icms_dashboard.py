@@ -77,6 +77,7 @@ class WebcamApp:
         self.empty_skip_update_notification = 5
         self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}
         self.welcome_notification = {}
+        self.message_take_off = True
 
     def start_monitoring(self):
         """Start the monitoring process."""
@@ -154,9 +155,9 @@ class WebcamApp:
                     reset_seats = True
             else:
                 self.notification_controller.update_single_seat(seat, None, color, status)
-                if all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and name not in self.welcome_notification:
+                if all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and self.message_take_off:
                     message = "message_takeoff"
-                    self.welcome_notification[name] = True
+                    self.message_take_off = False
                 if color == 'green' and name not in self.welcome_notification:
                     message = f"welcome_{name}"
                     self.welcome_notification[name] = True
@@ -166,8 +167,6 @@ class WebcamApp:
                     message = seat
                 elif color == 'red':
                     message = "message_unauthorize"
-                elif color ==  "all_green":
-                    message = "message_takeoff"
                     
                 if message:
                     play_voice_mp3(message)

@@ -17,9 +17,9 @@ import numpy as np
 from face_recognition import face_encodings, face_locations
 from PIL import Image, ImageTk
 from joblib import Parallel, delayed
+import pygame
 from log import Logger
 from seatbelt import seatbelt_status
-import speech_recognition as sr
 import pyttsx3
 
 
@@ -29,6 +29,23 @@ SEAT_BEAT = False
 
 logger = Logger(module="Helper Module")
 
+mp3_files = {
+    'A1': current.joinpath("voice_message", "A1.mp3"),
+    'A2': current.joinpath("voice_message", "A2.mp3"),
+    'B1': current.joinpath("voice_message", "B1.mp3"),
+    'B2': current.joinpath("voice_message", "B2.mp3"),
+    'message_takeoff': current.joinpath("voice_message", "message_takeoff.mp3"),
+    'message_unauthorize': current.joinpath("voice_message", "message_unauthorize.mp3"),
+    'seltbelt_Adarsh': current.joinpath("voice_message", "seltbelt_Adarsh.mp3"),
+    'seltbelt_Hari': current.joinpath("voice_message", "seltbelt_Hari.mp3"),
+    'seltbelt_Ravi': current.joinpath("voice_message", "seltbelt_Ravi.mp3"),
+    'seltbelt_Umashankar': current.joinpath("voice_message", "seltbelt_Umashankar.mp3"),
+    'Welcome': current.joinpath("voice_message", "Welcome.mp3"),
+    'welcome_Adarsh': current.joinpath("voice_message", "welcome_Adarsh.mp3"),
+    'welcome_Hari': current.joinpath("voice_message", "welcome_Hari.mp3"),
+    'welcome_Ravi': current.joinpath("voice_message", "welcome_Ravi.mp3"),
+    'welcome_Umashankar': current.joinpath("voice_message", "welcome_Umashankar.mp3")
+}
 
 if SEAT_BEAT:
     from keras.models import load_model
@@ -361,14 +378,33 @@ def time_consumer(func):
     return wrap_func
 
 
-def create_engine():
-    r = sr.Recognizer()
+def play_voice_text(text):
     engine = pyttsx3.init()
-    engine.setProperty("rate", 100)
+    engine.setProperty("rate", 125)
     voices = engine.getProperty('voices')
     # For Codec USB Sound Card in set Persian voice tone 22, hindi 29 or english 12 
     try:
         engine.setProperty("voice", voices[22].id)
     except Exception as e:
         engine.setProperty("voice", voices[0].id)
-    return engine, r
+    
+    engine.say(text)
+    engine.runAndWait()
+
+
+def play_voice_mp3(file):
+    """Play voice MP3 file.
+        Create voice from https://www.narakeet.com/
+            VOICE: Pooja
+            LANGUAGE: English - Indian Accent
+            SCRIPT : voice_message\text_script.txt
+
+        mp3_file (_type_): _description_
+    """
+    pygame.mixer.init()
+    pygame.mixer.music.load(mp3_files[file])
+    pygame.mixer.music.play()
+    
+    # Wait until the music finishes playing
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.1)

@@ -16,9 +16,8 @@ import cv2
 
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
-from helper import NotificationController, create_engine, do_face_verification, draw_seats, process_faces, seats_coordinates, time_consumer
+from helper import NotificationController,play_voice_mp3, do_face_verification, draw_seats, process_faces, seats_coordinates, time_consumer
 from log import Logger
-from joblib import Parallel, delayed
 
 
 class Config:
@@ -39,7 +38,6 @@ class Config:
 
 CONFIG = Config()
 logger = Logger(module="ICMS Dashboard")
-engine, r = create_engine()
 
 
 # fmt: off
@@ -80,18 +78,12 @@ class WebcamApp:
         self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}
         self.welcome_notification = {}
 
-
-    @classmethod
-    def speak(cls, audio):
-        engine.say(audio)
-        engine.runAndWait()
-
     def start_monitoring(self):
         """Start the monitoring process."""
         dataset = self.notification_controller.initialize_seat_info()
         logger.info(f"Database Loaded for {dataset}")
-        message = f"Welcome to Cyient UAM"
-        self.speak(message)
+        message = "Welcome"
+        play_voice_mp3(message)
         if not self.monitoring:
             self.monitoring = True
         self.start_webcam()
@@ -148,32 +140,40 @@ class WebcamApp:
             "passenger_match_distance": match_distance,
         }
         return log_info
-
+    
     def update_gui(self):
         """Update the GUI based on seatbelt status."""
         empty_skip_notification = self.empty_skip_update_notification
-
+        reset_seats = False
         for seat, (name, status, color) in self.track_last_five_frames.items():
+            message = None
             if status == "Empty":
-                self.ui_statbility[seat] += 1  # Initialize to 0 if it's None
-                for key, value in self.ui_statbility.items():
-                    if value == empty_skip_notification:
-                        self.notification_controller.update_single_seat(seat, None, color, status)
-                        self.ui_statbility[key] = 0
+                self.ui_statbility[seat] += 1
+                if any(value == empty_skip_notification for value in self.ui_statbility.values()):
+                    self.notification_controller.update_single_seat(seat, None, color, status)
+                    reset_seats = True
             else:
-                weclome_message = f"Dear {name}, Welcome to Onboard"
-                incorrect_message = f"Dear {name}, Wrong Seat Occupied"
-                unauthorize_message = f"Unauthorized Access"
-
-                if color in ['yellow', 'green'] and name not in self.welcome_notification.keys():
-                    self.speak(weclome_message)
-                    self.welcome_notification[name] = True
-                elif color == 'orange':
-                    self.speak(incorrect_message)
-                elif color == 'red':
-                    self.speak(unauthorize_message)
                 self.notification_controller.update_single_seat(seat, None, color, status)
-        self.clear_frames()
+                if all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and name not in self.welcome_notification:
+                    message = "message_takeoff"
+                    self.welcome_notification[name] = True
+                if color == 'green' and name not in self.welcome_notification:
+                    message = f"welcome_{name}"
+                    self.welcome_notification[name] = True
+                elif color == 'yellow':
+                    message = f"seltbelt_{name}"
+                elif color == 'orange':
+                    message = seat
+                elif color == 'red':
+                    message = "message_unauthorize"
+                elif color ==  "all_green":
+                    message = "message_takeoff"
+                    
+                if message:
+                    play_voice_mp3(message)
+
+        if reset_seats:
+            self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}  # Reset all seats
 
     def tracker(self):
         """Track passenger information over the last five frames."""
@@ -181,7 +181,7 @@ class WebcamApp:
             analysis_result = self.notification_controller.analysis(self.last_five_frames)
             self.track_last_five_frames = copy.deepcopy(analysis_result)
             self.update_gui()
-        
+            self.clear_frames()
         except Exception as e:
             logger.error(f"Error in tracker: {e}")
 
@@ -196,25 +196,19 @@ class WebcamApp:
             result = process_faces(self.frame, self.seat_coordinate)
             frame_info = {"A1": [], "A2": [], "B1": [], "B2": []}
 
-            # Use joblib to parallelize the processing of faces
-            parallel_result = Parallel(n_jobs=-1, prefer="threads")(
-                delayed(self.process_seat_info)(passenger_face_embedding)
-                for seat_name, passenger_face_embedding in result.items()
-                if len(passenger_face_embedding) == 1
-            )
-
-            # Update frame_info with the parallel results
-            for seat_name, log_info in zip(result.keys(), parallel_result):
-                frame_info[seat_name].append(log_info)
-
+            for seat_name, passenger_face_embedding in result.items():
+                if len(passenger_face_embedding) == 1:
+                    log_info = self.process_seat_info(passenger_face_embedding)
+                    frame_info[seat_name].append(log_info)
             self.last_five_frames[self.frame_process] = frame_info
+
         except Exception as e:
             logger.error(f"Error in process_frames: {e}")
 
     def display_frames(self):
         """Display frames with seat status."""
-        # cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow("Cabin monitoring", 600, 300)
+        cv2.namedWindow("Cabin monitoring", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Cabin monitoring", 600, 300)
         draw_seats(self.frame, self.seat_coordinate)
         cv2.imshow("Cabin monitoring", self.frame)
 

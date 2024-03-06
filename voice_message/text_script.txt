@@ -18,7 +18,6 @@ Seat B1: Incorrect Occupant Identified
 
 Ready for Takeoff
 Unauthorize passanger, Please deboard
-
 Mr. Ravi, Kindly Apply your seat belt
 Mr. Hari, Kindly Apply your seat belt
 Mr. Adarsh, Kindly Apply your seat belt

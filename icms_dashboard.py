@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import PhotoImage
 
 import cv2
-
+import time
 from CameraAccess import create_webcam_stream
 from database import get_passenger_data
 from helper import NotificationController,play_voice_mp3, do_face_verification, draw_seats, process_faces, seats_coordinates, time_consumer
@@ -155,10 +155,7 @@ class WebcamApp:
                     reset_seats = True
             else:
                 self.notification_controller.update_single_seat(seat, None, color, status)
-                if all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and self.message_take_off:
-                    message = "message_takeoff"
-                    self.message_take_off = False
-                elif color in ('yellow',"green"):
+                if color in ('yellow',"green"):
                     if name not in self.welcome_notification:
                         message = f"welcome_{name}"
                         self.welcome_notification[name] = True
@@ -168,9 +165,12 @@ class WebcamApp:
                     message = seat
                 elif color == 'red':
                     message = "message_unauthorize"
-                    
+                elif all(color == 'green' for _, (_, _, color) in self.track_last_five_frames.items()) and self.message_take_off:
+                    message = "message_takeoff"
+                    self.message_take_off = False
                 if message:
                     play_voice_mp3(message)
+                    time.sleep(0.5)
 
         if reset_seats:
             self.ui_statbility = {"A1": 0, "A2": 0, "B1": 0, "B2": 0}  # Reset all seats
